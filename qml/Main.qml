@@ -1,0 +1,42 @@
+import QtQuick
+import QtQuick.Controls.Basic
+import Blissmont.Shell
+
+// Main.qml — application window. Wires bridge connectivity to ConnectionService at the
+// view boundary, installs the frozen F-key keymap (UX §1), and hosts the BillingScreen.
+ApplicationWindow {
+    id: root
+    visible: true
+    width: 1280
+    height: 800
+    title: qsTr("BlissMont POS")
+    color: Theme.bg
+
+    // ── View-boundary wiring: engine connectivity -> ConnectionService ─────────
+    Connections {
+        target: PosEngineBridge
+        function onConnectionChanged() {
+            ConnectionService.setConnected(PosEngineBridge.connected)
+        }
+        function onSyncStatusChanged(online, pending) {
+            ConnectionService.applySyncStatus(online, pending)
+        }
+    }
+
+    // Connect to the locally-running engine on startup; on every (re)connect the engine
+    // re-pushes the snapshot, so the UI rehydrates with no re-sync logic here (spec §4).
+    Component.onCompleted: PosEngineBridge.connectToEngine()
+
+    // ── Frozen keymap (UX §1). Skeleton: nav keys live; others are placeholders. ─
+    Shortcut { sequences: ["F12"]; onActivated: billing.focusScan() }       // scan-is-home
+    Shortcut { sequences: ["F3"];  onActivated: billing.navState = "history" }
+    Shortcut { sequences: ["F6"];  onActivated: billing.navState = "tender" }
+    Shortcut { sequences: ["F7"];  onActivated: billing.navState = "payout" }
+    Shortcut { sequences: ["F9"];  onActivated: billing.navState = "return" }
+    Shortcut { sequences: ["Esc"]; onActivated: billing.navState = "item" }
+
+    BillingScreen {
+        id: billing
+        anchors.fill: parent
+    }
+}

@@ -1,0 +1,21 @@
+# Build output
+/build/
+/out/
+/cmake-build-*/
+
+# Generated protobuf/gRPC C++ stubs — regenerated fresh every build, never committed
+# (guarantees the shell's stubs cannot drift from the engine's contract).
+/src/proto/*
+!/src/proto/.gitkeep
+
+# vcpkg local install tree (when not using a shared VCPKG_ROOT)
+/vcpkg_installed/
+
+# IDE / editor
+/.idea/
+/.vscode/
+*.user
+compile_commands.json
+
+# OS
+.DS_Store

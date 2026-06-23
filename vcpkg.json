@@ -1,0 +1,12 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+  "name": "blissmont-shell",
+  "version-string": "0.1.0",
+  "description": "BlissMont POS shell — Qt/C++ thin client over the terminal engine gRPC contract.",
+  "homepage": "https://example.invalid/blissmont-shell",
+  "dependencies": [
+    "protobuf",
+    "grpc",
+    "gtest"
+  ]
+}

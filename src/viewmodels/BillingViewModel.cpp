@@ -1,0 +1,51 @@
+// viewmodels/BillingViewModel.cpp — see BillingViewModel.hpp.
+#include "viewmodels/BillingViewModel.hpp"
+
+namespace blissmont::viewmodels {
+
+BillingViewModel::BillingViewModel(QObject* parent) : QObject(parent) {}
+
+void BillingViewModel::setBridge(blissmont::bridge::PosEngineBridge* bridge) {
+    if (bridge_ == bridge) return;
+    bridge_ = bridge;
+    wireBridge();
+    emit bridgeChanged();
+}
+
+void BillingViewModel::wireBridge() {
+    if (!bridge_) return;
+    using B = blissmont::bridge::PosEngineBridge;
+    connect(bridge_, &B::itemNotFound, this, [this](const QString& barcode) {
+        setStatus(QStringLiteral("Item not found: %1").arg(barcode));
+    });
+    connect(bridge_, &B::commandRejected, this, [this](const QString&, const QString& message) {
+        setStatus(message);
+    });
+    connect(bridge_, &B::orderSettled, this,
+            [this](const QString& receiptNo, bool provisional, const QString& total) {
+                setStatus(provisional
+                              ? QStringLiteral("Settled (offline) %1 — %2").arg(receiptNo, total)
+                              : QStringLiteral("Settled %1 — %2").arg(receiptNo, total));
+            });
+}
+
+void BillingViewModel::setScanText(const QString& text) {
+    if (scanText_ == text) return;
+    scanText_ = text;
+    emit scanTextChanged();
+}
+
+void BillingViewModel::submitScan() {
+    const QString code = scanText_.trimmed();
+    if (code.isEmpty() || !bridge_) return;
+    bridge_->scanItem(code);
+    setScanText(QString());  // clear -> focus returns to empty scan field (home law)
+}
+
+void BillingViewModel::setStatus(const QString& message) {
+    if (statusMessage_ == message) return;
+    statusMessage_ = message;
+    emit statusMessageChanged();
+}
+
+}  // namespace blissmont::viewmodels
