@@ -9,7 +9,9 @@ round-trip through real gRPC.
 > localhost — both processes must be up to see the round-trip. The engine is the single
 > source of truth for all cart/tax/tender/sync state.
 
-Verified on: Ubuntu 24.04, g++ 13.3, CMake 3.28, Ninja 1.11, Go 1.26, Qt **6.8.3**.
+Verified on: Ubuntu 24.04, g++ 13.3, CMake 3.28, Ninja 1.11, Go 1.26, Qt **6.8.3** (8-core /
+16 GB laptop). End to end: 15/15 unit tests pass, both integration tests pass against the
+live engine, and the GUI renders + hydrates config + scans a line over real gRPC.
 
 ---
 
@@ -21,12 +23,17 @@ Verified on: Ubuntu 24.04, g++ 13.3, CMake 3.28, Ninja 1.11, Go 1.26, Qt **6.8.3
 sudo apt-get update
 sudo apt-get install -y --no-install-recommends \
   ninja-build pkg-config \
-  libgl1-mesa-dev libegl1-mesa-dev libxkbcommon-dev
+  libgl1-mesa-dev libegl1-mesa-dev libxkbcommon-dev \
+  libxcb-cursor0          # REQUIRED to launch the GUI on X11 (Qt ≥ 6.5 xcb plugin)
 ```
 
 `g++` (≥ 12, for C++20), `cmake` (≥ 3.21) and `git` are also required. On a stock 24.04
 desktop the GL/EGL/xkbcommon dev packages are often already present (`libgl-dev`,
 `libegl1-mesa-dev`, `libxkbcommon-dev`); install only what `apt` reports missing.
+
+> **`libxcb-cursor0` is easy to miss** and CI doesn't need it (CI never opens a window). Without
+> it the GUI aborts at startup with *"Could not load the Qt platform plugin xcb"*. See
+> Troubleshooting for a no-display capture option that sidesteps X11 entirely.
 
 ### 1.2 Qt 6.8.3 via aqtinstall (account-free, matches CI)
 
@@ -87,11 +94,15 @@ cmake --preset linux-debug -DCMAKE_PREFIX_PATH="$HOME/Qt/6.8.3/gcc_64"
 cmake --build --preset linux-debug
 ```
 
-**First configure is slow.** vcpkg compiles protobuf, gRPC, abseil and GoogleTest from
-source — in **both** debug and release — which is ~30–60 min on 8 cores. This happens once:
-binaries are cached under `~/.cache/vcpkg/archives`, so a clean reconfigure in a fresh
-`build/` restores them in seconds, and an incremental rebuild skips them entirely. (CI
-caches the same `~/.cache/vcpkg/archives` keyed on `vcpkg.json`.)
+**First configure is very slow.** vcpkg compiles abseil, protobuf, gRPC, openssl and
+GoogleTest from source — in **both** debug and release. On this 8-core / 16 GB laptop the
+first `cmake --preset` took **~105 min** (`Configuring done (6361.7s)`), gRPC 1.76 alone
+dominating (its giant generated TUs swap-pressure a 16 GB box). Budget 1.5–2 h the first
+time; on more RAM / cores it's closer to 30–45 min. This happens **once**: binaries are
+cached under `~/.cache/vcpkg/archives`, so a clean reconfigure in a fresh `build/` restores
+them in seconds and an incremental rebuild skips them entirely. (CI caches the same
+`~/.cache/vcpkg/archives` keyed on `vcpkg.json`.) The actual project build after configure
+(`cmake --build`) is fast — ~1–2 min (77 targets).
 
 `terminal.proto` C++/gRPC stubs are generated fresh into `src/proto/` (gitignored) on every
 build by `cmake/ProtoGen.cmake` — never edited, never committed.
@@ -102,9 +113,9 @@ build by `cmake/ProtoGen.cmake` — never edited, never committed.
 ctest --preset linux-debug          # or: ctest --test-dir build/linux-debug
 ```
 
-Covers `Money`, `CartLineModel`, `BillingViewModel`, `ConfigService`. The integration
-tests (`shell_integration_tests`) **self-skip** unless `BLISSMONT_ENGINE_TARGET` is set
-(see §4), so the suite stays green on a box with no engine.
+Covers `Money`, `CartLineModel`, `BillingViewModel`, `ConfigService` — **15 tests, all
+pass**. The integration tests (`shell_integration_tests`) **self-skip** unless
+`BLISSMONT_ENGINE_TARGET` is set (see §4), so the suite stays green on a box with no engine.
 
 ---
 
@@ -170,7 +181,12 @@ BLISSMONT_ENGINE_TARGET=localhost:50080 ./build/linux-debug/tests/shell_integrat
 ```
 
 `BridgeSmokeTest` connects the real bridge, scans `TESTSKU`, and asserts a `CartUpdated`
-round-trips and resets the model — the spec §6 walking-skeleton proof.
+round-trips and resets the model — the spec §6 walking-skeleton proof. Verified: both
+`BridgeSmoke.ScanRoundTripsAndRenders` and `ConfigRehydrate.ConfigRepopulatesAfterReconnect`
+pass against the live engine (`2 tests … PASSED`, ~25 ms).
+
+> Run the integration binary itself with `QT_QPA_PLATFORM=offscreen` if the box has no
+> display — it needs no window, only the engine.
 
 ---
 
@@ -183,11 +199,16 @@ round-trips and resets the model — the spec §6 walking-skeleton proof.
   **Rs**, returns/payouts enabled). The engine logs the connection; the shell's status line
   goes connected.
 - **Scan round-trips**: type `111` + Enter in the scan field → `scanItem` → engine →
-  `CartUpdated` → a **Widget** line appears in the bill table and focus returns to the scan
-  field. (`222` → Gadget; an unknown code → "Item not found" in the status line.)
+  `CartUpdated` → a **Widget** line appears in the bill table — qty `1`, price `100.00`,
+  line total `100.00`, and the running **Total** updates to **118.00** (100 + 18% GST) — and
+  the scan field clears and re-focuses ("scan-is-home"). (`222` → Gadget; an unknown code →
+  "Item not found" in the status line.)
 
-That single connect → command → event → render loop is the whole point of Milestone 1.
-Tender / returns / history / payout panels are intentionally still placeholders.
+This was captured live: the billing screen renders with the focused scan field, empty bill
+("Scan an item to begin"), Walk-in customer, Total 0.00, status line, and the item-panel
+placeholder; after scanning `111` the Widget line and Total 118.00 appear. That single
+connect → command → event → render loop is the whole point of Milestone 1. Tender / returns
+/ history / payout panels are intentionally still placeholders.
 
 ---
 
@@ -210,10 +231,24 @@ configuring; the preset references `$env{VCPKG_ROOT}`.
 **vcpkg rebuilds deps from scratch every time.** Make sure `~/.cache/vcpkg/archives`
 persists between runs; deleting it (or changing `vcpkg.json`) forces the ~1h rebuild.
 
-**Qt fails to load the platform plugin / no GUI.** Install `libgl1-mesa-dev`
-`libegl1-mesa-dev` `libxkbcommon-dev`, and run on a machine with a display
-(`echo $DISPLAY`). For a headless box, use the integration smoke test (§4) instead of the
-GUI — it needs no display.
+**`Could not load the Qt platform plugin "xcb"` → app aborts at startup.** The xcb plugin
+"was found" but a dependency is missing — almost always `libxcb-cursor0` (mandatory since
+Qt 6.5). `sudo apt-get install -y libxcb-cursor0`. Also ensure `libgl1-mesa-dev`
+`libegl1-mesa-dev` `libxkbcommon-dev` and a display (`echo $DISPLAY`).
+
+**No display at all (SSH / headless) but you still want a screenshot.** Run the GUI on Qt's
+self-contained VNC platform — it needs none of the X11 libs above:
+
+```bash
+QT_QPA_PLATFORM='vnc:size=1280x800' ./build/linux-debug/src/blissmont-shell   # serves :5900
+# then drive + capture with any VNC client, e.g. vncdotool (pip install vncdotool):
+vncdotool -s localhost::5900 capture before.png
+vncdotool -s localhost::5900 type 111 key enter
+vncdotool -s localhost::5900 capture after.png      # Widget line + Total 118.00
+```
+
+This is exactly how the screenshots in §5 were captured headlessly. For a pure pass/fail
+proof with no rendering at all, use the integration smoke test (§4).
 
 **Shell connects but the bill stays empty / "Item not found".** Scan one of the seeded
 barcodes (`TESTSKU`, `111`, `222`). The fake catalog only knows those.
