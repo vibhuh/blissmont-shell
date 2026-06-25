@@ -23,7 +23,19 @@ qt_add_library(shell STATIC
   services/ConfigService.cpp        services/ConfigService.hpp
 )
 
-target_include_directories(shell PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+# The Qt-generated <module>_qmltyperegistrations.cpp includes each QML_ELEMENT type's
+# header by BARE BASENAME under an __has_include guard (e.g. <PosEngineBridge.hpp>),
+# not by its path relative to src/. Our headers live in subdirs (bridge/, services/,
+# viewmodels/, models/), so those guards only resolve if the containing dirs are on
+# the include path. Add them, or the includes silently drop and the registered types
+# are undeclared in the generated TU.
+target_include_directories(shell PUBLIC
+  ${CMAKE_CURRENT_SOURCE_DIR}
+  ${CMAKE_CURRENT_SOURCE_DIR}/core
+  ${CMAKE_CURRENT_SOURCE_DIR}/bridge
+  ${CMAKE_CURRENT_SOURCE_DIR}/models
+  ${CMAKE_CURRENT_SOURCE_DIR}/viewmodels
+  ${CMAKE_CURRENT_SOURCE_DIR}/services)
 target_link_libraries(shell
   PUBLIC
     Qt6::Core

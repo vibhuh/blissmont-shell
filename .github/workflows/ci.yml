@@ -42,28 +42,24 @@ jobs:
           arch: linux_gcc_64
           cache: true
 
-      - name: Export GitHub Actions cache env (vcpkg binary caching)
-        uses: actions/github-script@v7
+      # Cache vcpkg's default binary archives (~/.cache/vcpkg/archives) so the
+      # protobuf/grpc/abseil build (~1h) runs once and is restored thereafter. The
+      # post-job save runs even when a later step fails, so the archives persist.
+      - name: Cache vcpkg binary archives
+        uses: actions/cache@v4
         with:
-          script: |
-            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
-            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+          path: ~/.cache/vcpkg/archives
+          key: vcpkg-archives-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}
+          restore-keys: |
+            vcpkg-archives-${{ runner.os }}-
 
       - name: Configure (vcpkg manifest → protobuf/grpc/gtest)
-        env:
-          VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
         run: |
           export VCPKG_ROOT="${VCPKG_INSTALLATION_ROOT}"
           cmake --preset linux-release -DCMAKE_PREFIX_PATH="${QT_ROOT_DIR}"
 
       - name: Build
         run: cmake --build --preset linux-release
-
-      - name: Dump generated QML type registration on build failure
-        if: failure()
-        run: |
-          f=build/linux-release/src/shell_qmltyperegistrations.cpp
-          echo "::group::$f (head)"; sed -n '1,45p' "$f" 2>/dev/null || echo "(not generated)"; echo "::endgroup::"
 
       - name: Test (unit; integration self-skips without BLISSMONT_ENGINE_TARGET)
         run: ctest --test-dir build/linux-release --output-on-failure
