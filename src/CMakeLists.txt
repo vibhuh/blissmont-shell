@@ -30,6 +30,23 @@ target_link_libraries(shell
     Qt6::Qml
     shell_proto)
 
+# The QML sources live under <root>/qml, a sibling of this src/ dir. Qt derives a
+# resource alias from each file's path relative to the target's source dir; for files
+# outside it that relative path contains "..", which is invalid in a resource — Qt 6.8
+# errors unless QT_RESOURCE_ALIAS is set. Map each file to its path relative to qml/.
+set(SHELL_QML_FILES
+  Main.qml
+  screens/BillingScreen.qml
+  panels/ItemPanel.qml
+  components/ScanField.qml
+  components/BillTable.qml
+  components/StatusLine.qml
+  theme/Theme.qml)
+foreach(_qml ${SHELL_QML_FILES})
+  set_source_files_properties(${CMAKE_SOURCE_DIR}/qml/${_qml}
+    PROPERTIES QT_RESOURCE_ALIAS ${_qml})
+endforeach()
+
 # Theme.qml is a `pragma Singleton` — tell the QML module system so it registers as one.
 set_source_files_properties(${CMAKE_SOURCE_DIR}/qml/theme/Theme.qml
   PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
