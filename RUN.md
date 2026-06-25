@@ -236,6 +236,20 @@ persists between runs; deleting it (or changing `vcpkg.json`) forces the ~1h reb
 Qt 6.5). `sudo apt-get install -y libxcb-cursor0`. Also ensure `libgl1-mesa-dev`
 `libegl1-mesa-dev` `libxkbcommon-dev` and a display (`echo $DISPLAY`).
 
+> **No sudo? Install `libxcb-cursor0` into a local dir** (its deps — `libxcb-render0`,
+> `libxcb-image0`, `libxcb1`, … — ship with a stock 24.04 desktop, so only the cursor lib is
+> missing). `apt-get download` needs no root:
+>
+> ```bash
+> apt-get download libxcb-cursor0                      # → libxcb-cursor0_*.deb in CWD
+> dpkg-deb -x libxcb-cursor0_*.deb ./xcbcursor          # extract, no install
+> LD_LIBRARY_PATH="$PWD/xcbcursor/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH" \
+>   ./build/linux-debug/src/blissmont-shell             # launches on $DISPLAY
+> ```
+>
+> This is per-launch (the env var), not a system install — verified working on this box. A
+> proper `sudo apt-get install -y libxcb-cursor0` lets you drop the `LD_LIBRARY_PATH`.
+
 **No display at all (SSH / headless) but you still want a screenshot.** Run the GUI on Qt's
 self-contained VNC platform — it needs none of the X11 libs above:
 
