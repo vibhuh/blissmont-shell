@@ -59,5 +59,11 @@ jobs:
       - name: Build
         run: cmake --build --preset linux-release
 
+      - name: Dump generated QML type registration on build failure
+        if: failure()
+        run: |
+          f=build/linux-release/src/shell_qmltyperegistrations.cpp
+          echo "::group::$f (head)"; sed -n '1,45p' "$f" 2>/dev/null || echo "(not generated)"; echo "::endgroup::"
+
       - name: Test (unit; integration self-skips without BLISSMONT_ENGINE_TARGET)
         run: ctest --test-dir build/linux-release --output-on-failure
