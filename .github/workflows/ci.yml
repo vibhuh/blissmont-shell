@@ -1,0 +1,73 @@
+name: ci
+
+# Build + test gate for blissmont-shell (Qt 6.8 + C++20; protobuf/grpc/gtest via vcpkg).
+# The terminal contract is a PRIVATE submodule (blissmont-contracts), so the checkout needs
+# a token with read access to it — the default GITHUB_TOKEN is scoped to this repo only.
+# Provide it as the `SUBMODULE_TOKEN` repo secret (a PAT/​fine-grained token with
+# contents:read on vibhuh/blissmont-contracts), OR make blissmont-contracts public and
+# replace the submodule step with `submodules: recursive` on actions/checkout.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout (superproject only)
+        uses: actions/checkout@v4
+
+      - name: Check out the private contracts submodule
+        env:
+          SUBMODULE_TOKEN: ${{ secrets.SUBMODULE_TOKEN }}
+        run: |
+          if [ -z "$SUBMODULE_TOKEN" ]; then
+            echo "::error::secrets.SUBMODULE_TOKEN is required to clone the private blissmont-contracts submodule (a token with contents:read on vibhuh/blissmont-contracts). Alternatively make blissmont-contracts public and use actions/checkout submodules:recursive."
+            exit 1
+          fi
+          git config --global url."https://x-access-token:${SUBMODULE_TOKEN}@github.com/".insteadOf "git@github.com:"
+          git submodule sync --recursive
+          git submodule update --init --recursive
+          test -f third_party/blissmont-contracts/proto/terminal/v1/terminal.proto \
+            || { echo "::error::contracts submodule did not check out"; exit 1; }
+
+      - name: Install build tools (Ninja, GL/X libs for Qt)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            ninja-build pkg-config \
+            libgl1-mesa-dev libegl1-mesa-dev libxkbcommon-dev
+
+      - name: Install Qt 6.8
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.*'
+          host: linux
+          target: desktop
+          arch: linux_gcc_64
+          cache: true
+
+      - name: Export GitHub Actions cache env (vcpkg binary caching)
+        uses: actions/github-script@v7
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+      - name: Configure (vcpkg manifest → protobuf/grpc/gtest)
+        env:
+          VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+        run: |
+          export VCPKG_ROOT="${VCPKG_INSTALLATION_ROOT}"
+          cmake --preset linux-release -DCMAKE_PREFIX_PATH="${QT_ROOT_DIR}"
+
+      - name: Build
+        run: cmake --build --preset linux-release
+
+      - name: Test (unit; integration self-skips without BLISSMONT_ENGINE_TARGET)
+        run: ctest --test-dir build/linux-release --output-on-failure
