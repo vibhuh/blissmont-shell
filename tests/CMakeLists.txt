@@ -9,7 +9,7 @@ qt_add_executable(shell_unit_tests
   unit/CartLineModelTest.cpp
   unit/BillingViewModelTest.cpp
   unit/ConfigServiceTest.cpp)
-target_link_libraries(shell_unit_tests PRIVATE shell GTest::gtest Qt6::Core)
+target_link_libraries(shell_unit_tests PRIVATE shell GTest::gtest Qt6::Core Qt6::Test)
 add_test(NAME shell_unit_tests COMMAND shell_unit_tests)
 
 # ── Integration: bridge against a live engine / fakepos (opt-in) ──────────────
@@ -19,5 +19,5 @@ qt_add_executable(shell_integration_tests
   integration/main.cpp
   integration/BridgeSmokeTest.cpp
   integration/ConfigRehydrateTest.cpp)
-target_link_libraries(shell_integration_tests PRIVATE shell GTest::gtest Qt6::Core)
+target_link_libraries(shell_integration_tests PRIVATE shell GTest::gtest Qt6::Core Qt6::Test)
 add_test(NAME shell_integration_tests COMMAND shell_integration_tests)
