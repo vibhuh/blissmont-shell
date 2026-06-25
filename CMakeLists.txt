@@ -23,7 +23,8 @@ endif()
 option(BLISSMONT_BUILD_TESTS "Build the libshell unit + integration tests" ON)
 
 # ── Qt (installed separately; LTS pinned) ─────────────────────────────────────
-find_package(Qt6 6.8 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2)
+# Test = QtTest (QSignalSpy), used by the unit + integration suites.
+find_package(Qt6 6.8 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 Test)
 qt_standard_project_setup(REQUIRES 6.8)
 set(CMAKE_AUTOMOC ON)
 

@@ -67,6 +67,12 @@ signals:
     void commandRejected(const QString& code, const QString& message);
     void shiftStateChanged(const QString& shiftId, const QString& status);
     void syncStatusChanged(bool online, int pending);
+    // Device config relayed by the engine over the Session stream (contracts
+    // v1.1.0). Emitted on connect, on reconnect, and on every config change, with
+    // the device-domain fields the UI gates on. Carries plain Qt types so services
+    // stay free of any gRPC/proto dependency (the bridge owns that translation).
+    void configUpdated(bool allowReturns, bool payoutEnabled, bool allowDiscounts,
+                       const QString& tenderCompleteMode, const QString& currencySymbol);
     void authRequired(const QString& action, const QString& reason);
     void returnContextLoaded();
     void historyResults();

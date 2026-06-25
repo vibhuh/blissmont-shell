@@ -3,14 +3,18 @@
 // Holds the server-resolved operating snapshot (which panels/actions are enabled, tender
 // behaviour, return policy, …) so the UI can gate features without re-deriving the hierarchy.
 //
-// ── KNOWN INTEGRATION GAP (a validated UI gap, spec §3) ───────────────────────────────
-// The config snapshot (TerminalConfigSnapshot) is defined in blissmont.pos.v1 (pos.proto,
-// the terminal<->SERVER contract), NOT in blissmont.terminal.v1 (terminal.proto, the
-// UI<->ENGINE contract the shell consumes). The shell talks only to the local engine, so it
-// has no path to those flags yet. Closing this gap is a CONTRACT change in blissmont-contracts
-// (preferred: the engine relays the resolved config to the UI over the Session stream, e.g. a
-// new ConfigSnapshot event in terminal.proto), then a submodule bump + regen — never a patch
-// here. Until then ConfigService serves safe defaults so the skeleton runs.
+// ── INTEGRATION GAP CLOSED (contracts v1.1.0) ─────────────────────────────────────────
+// This was a validated UI gap (spec §3): the config snapshot (TerminalConfigSnapshot) lived
+// only in blissmont.pos.v1 (the terminal<->SERVER contract), not in blissmont.terminal.v1 (the
+// UI<->ENGINE contract the shell consumes), so the shell had no path to those flags.
+//
+// Closed exactly as anticipated — a CONTRACT change, not a patch here: contracts v1.1.0 adds a
+// device-domain terminal.v1.TerminalConfig carried by a new ConfigUpdated arm of the existing
+// Session Event oneof. The engine maps the server snapshot into that device-domain message and
+// pushes it on connect, reconnect, and config change. ConfigService now HYDRATES from that event
+// (applyConfig, wired to PosEngineBridge::configUpdated in QML), exactly like ConnectionService
+// hydrates from SyncStatusChanged. The defaults below remain only as the pre-hydration fallback
+// (before the first ConfigUpdated lands), so the skeleton still runs disconnected.
 #pragma once
 
 #include <QObject>
@@ -40,6 +44,13 @@ public:
     [[nodiscard]] bool allowDiscounts() const { return allowDiscounts_; }
     [[nodiscard]] QString tenderCompleteMode() const { return tenderCompleteMode_; }
     [[nodiscard]] QString currencySymbol() const { return currencySymbol_; }
+
+public slots:
+    // Hydrate from an engine ConfigUpdated event (relayed by PosEngineBridge, wired
+    // in QML). Idempotent: re-applying the same values is a no-op; this is what makes
+    // reconnect rehydration cheap (the engine re-pushes config on every (re)connect).
+    void applyConfig(bool allowReturns, bool payoutEnabled, bool allowDiscounts,
+                     const QString& tenderCompleteMode, const QString& currencySymbol);
 
 signals:
     void changed();

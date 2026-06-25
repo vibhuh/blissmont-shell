@@ -23,12 +23,41 @@ qt_add_library(shell STATIC
   services/ConfigService.cpp        services/ConfigService.hpp
 )
 
-target_include_directories(shell PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+# The Qt-generated <module>_qmltyperegistrations.cpp includes each QML_ELEMENT type's
+# header by BARE BASENAME under an __has_include guard (e.g. <PosEngineBridge.hpp>),
+# not by its path relative to src/. Our headers live in subdirs (bridge/, services/,
+# viewmodels/, models/), so those guards only resolve if the containing dirs are on
+# the include path. Add them, or the includes silently drop and the registered types
+# are undeclared in the generated TU.
+target_include_directories(shell PUBLIC
+  ${CMAKE_CURRENT_SOURCE_DIR}
+  ${CMAKE_CURRENT_SOURCE_DIR}/core
+  ${CMAKE_CURRENT_SOURCE_DIR}/bridge
+  ${CMAKE_CURRENT_SOURCE_DIR}/models
+  ${CMAKE_CURRENT_SOURCE_DIR}/viewmodels
+  ${CMAKE_CURRENT_SOURCE_DIR}/services)
 target_link_libraries(shell
   PUBLIC
     Qt6::Core
     Qt6::Qml
     shell_proto)
+
+# The QML sources live under <root>/qml, a sibling of this src/ dir. Qt derives a
+# resource alias from each file's path relative to the target's source dir; for files
+# outside it that relative path contains "..", which is invalid in a resource — Qt 6.8
+# errors unless QT_RESOURCE_ALIAS is set. Map each file to its path relative to qml/.
+set(SHELL_QML_FILES
+  Main.qml
+  screens/BillingScreen.qml
+  panels/ItemPanel.qml
+  components/ScanField.qml
+  components/BillTable.qml
+  components/StatusLine.qml
+  theme/Theme.qml)
+foreach(_qml ${SHELL_QML_FILES})
+  set_source_files_properties(${CMAKE_SOURCE_DIR}/qml/${_qml}
+    PROPERTIES QT_RESOURCE_ALIAS ${_qml})
+endforeach()
 
 # Theme.qml is a `pragma Singleton` — tell the QML module system so it registers as one.
 set_source_files_properties(${CMAKE_SOURCE_DIR}/qml/theme/Theme.qml

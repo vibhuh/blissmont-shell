@@ -1,0 +1,65 @@
+name: ci
+
+# Build + test gate for blissmont-shell (Qt 6.8 + C++20; protobuf/grpc/gtest via vcpkg).
+# The terminal contract (blissmont-contracts) is a public submodule, so actions/checkout
+# fetches it directly with the default token — no extra secret needed.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout (with contracts submodule)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Verify contracts submodule checked out
+        run: |
+          test -f third_party/blissmont-contracts/proto/terminal/v1/terminal.proto \
+            || { echo "::error::contracts submodule did not check out"; exit 1; }
+
+      - name: Install build tools (Ninja, GL/X libs for Qt)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            ninja-build pkg-config \
+            libgl1-mesa-dev libegl1-mesa-dev libxkbcommon-dev
+
+      - name: Install Qt 6.8
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.*'
+          host: linux
+          target: desktop
+          arch: linux_gcc_64
+          cache: true
+
+      # Cache vcpkg's default binary archives (~/.cache/vcpkg/archives) so the
+      # protobuf/grpc/abseil build (~1h) runs once and is restored thereafter. The
+      # post-job save runs even when a later step fails, so the archives persist.
+      - name: Cache vcpkg binary archives
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/vcpkg/archives
+          key: vcpkg-archives-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}
+          restore-keys: |
+            vcpkg-archives-${{ runner.os }}-
+
+      - name: Configure (vcpkg manifest → protobuf/grpc/gtest)
+        run: |
+          export VCPKG_ROOT="${VCPKG_INSTALLATION_ROOT}"
+          cmake --preset linux-release -DCMAKE_PREFIX_PATH="${QT_ROOT_DIR}"
+
+      - name: Build
+        run: cmake --build --preset linux-release
+
+      - name: Test (unit; integration self-skips without BLISSMONT_ENGINE_TARGET)
+        run: ctest --test-dir build/linux-release --output-on-failure
