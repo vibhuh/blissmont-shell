@@ -1,11 +1,8 @@
 name: ci
 
 # Build + test gate for blissmont-shell (Qt 6.8 + C++20; protobuf/grpc/gtest via vcpkg).
-# The terminal contract is a PRIVATE submodule (blissmont-contracts), so the checkout needs
-# a token with read access to it — the default GITHUB_TOKEN is scoped to this repo only.
-# Provide it as the `SUBMODULE_TOKEN` repo secret (a PAT/​fine-grained token with
-# contents:read on vibhuh/blissmont-contracts), OR make blissmont-contracts public and
-# replace the submodule step with `submodules: recursive` on actions/checkout.
+# The terminal contract (blissmont-contracts) is a public submodule, so actions/checkout
+# fetches it directly with the default token — no extra secret needed.
 
 on:
   push:
@@ -19,20 +16,13 @@ jobs:
   build-test:
     runs-on: ubuntu-24.04
     steps:
-      - name: Checkout (superproject only)
+      - name: Checkout (with contracts submodule)
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
-      - name: Check out the private contracts submodule
-        env:
-          SUBMODULE_TOKEN: ${{ secrets.SUBMODULE_TOKEN }}
+      - name: Verify contracts submodule checked out
         run: |
-          if [ -z "$SUBMODULE_TOKEN" ]; then
-            echo "::error::secrets.SUBMODULE_TOKEN is required to clone the private blissmont-contracts submodule (a token with contents:read on vibhuh/blissmont-contracts). Alternatively make blissmont-contracts public and use actions/checkout submodules:recursive."
-            exit 1
-          fi
-          git config --global url."https://x-access-token:${SUBMODULE_TOKEN}@github.com/".insteadOf "git@github.com:"
-          git submodule sync --recursive
-          git submodule update --init --recursive
           test -f third_party/blissmont-contracts/proto/terminal/v1/terminal.proto \
             || { echo "::error::contracts submodule did not check out"; exit 1; }
 
