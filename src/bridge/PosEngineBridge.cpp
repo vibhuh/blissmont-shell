@@ -103,6 +103,17 @@ void PosEngineBridge::applyEvent(const Event& evt) {
             emit syncStatusChanged(evt.sync_status_changed().online(),
                                    evt.sync_status_changed().pending());
             break;
+        case E::kConfigUpdated: {
+            // Engine-relayed device config (spec §3 gap, closed in contracts v1.1.0).
+            // Project the device-domain TerminalConfig onto plain Qt types for the
+            // services; the same snapshot lands on connect, reconnect, and change.
+            const auto& cfg = evt.config_updated().config();
+            emit configUpdated(cfg.allow_returns(), cfg.payout_enabled(),
+                               cfg.allow_discounts(),
+                               QString::fromStdString(cfg.tender_complete_mode()),
+                               QString::fromStdString(cfg.currency_symbol()));
+            break;
+        }
         case E::kAuthRequired:
             emit authRequired(QString::fromStdString(evt.auth_required().action()),
                               QString::fromStdString(evt.auth_required().reason()));
