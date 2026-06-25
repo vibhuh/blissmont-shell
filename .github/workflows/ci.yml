@@ -42,11 +42,16 @@ jobs:
           arch: linux_gcc_64
           cache: true
 
-      # Cache vcpkg's default binary archives (~/.cache/vcpkg/archives) so the
-      # protobuf/grpc/abseil build (~1h) runs once and is restored thereafter. The
-      # post-job save runs even when a later step fails, so the archives persist.
-      - name: Cache vcpkg binary archives
-        uses: actions/cache@v4
+      # Restore vcpkg's default binary archives (~/.cache/vcpkg/archives) so the
+      # protobuf/grpc/abseil build (~1h) runs once and is restored thereafter.
+      # NOTE: the combined actions/cache@v4 only saves in a post-step gated on job
+      # success — a FAILED build (e.g. a compile error) skips the save, so deps
+      # rebuild from scratch on every red iteration. We split restore/save and run
+      # the save with `if: always()` right after Configure (where deps are built),
+      # so the archives persist even when Build or Test later fails.
+      - name: Restore vcpkg binary archives
+        id: vcpkg-cache
+        uses: actions/cache/restore@v4
         with:
           path: ~/.cache/vcpkg/archives
           key: vcpkg-archives-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}
@@ -57,6 +62,15 @@ jobs:
         run: |
           export VCPKG_ROOT="${VCPKG_INSTALLATION_ROOT}"
           cmake --preset linux-release -DCMAKE_PREFIX_PATH="${QT_ROOT_DIR}"
+
+      # Save now (deps are built) regardless of how Build/Test go, skipping the
+      # upload when the restore was an exact hit (nothing new to store).
+      - name: Save vcpkg binary archives
+        if: always() && steps.vcpkg-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ~/.cache/vcpkg/archives
+          key: vcpkg-archives-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}
 
       - name: Build
         run: cmake --build --preset linux-release
