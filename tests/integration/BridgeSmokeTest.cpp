@@ -93,14 +93,15 @@ TEST(BridgeSmoke, TenderAddAndRemoveRoundTrip) {
     bridge.disconnectFromEngine();
 }
 
-// The returns shell build: drive a full return over real gRPC against a live engine.
-// Requires the dev engine (cmd/blissmont-engine), which seeds an OPEN shift on boot, so
-// the bridge's session hydrates it and can settle + commit a return. Sell a line → settle
-// (capture the receipt) → StartReturn → the returnable lines land in ReturnLineModel →
-// SetReturnLineQty re-emits the context → CommitReturn → a provisional ReturnCommitted with
-// a credit-note number. The canonical RefundSettled is produced by the syncer's outbox drain
-// (the dev engine does not drain), so the provisional commit is the round-trip asserted here.
-TEST(BridgeSmoke, ReturnRoundTripIssuesProvisionalCreditNote) {
+// The returns shell build: drive a full return over real gRPC and observe the FULL
+// provisional→canonical lifecycle. Requires the dev engine (cmd/blissmont-engine), which
+// seeds an OPEN shift on boot (so the bridge's session hydrates it and can settle + commit a
+// return) and drains its outbox in the background. Sell a line → settle (capture the receipt)
+// → StartReturn → the returnable lines land in ReturnLineModel → SetReturnLineQty re-emits the
+// context (snapshot reset) → CommitReturn → a provisional ReturnCommitted with a credit-note
+// number → the background drain reconciles the refund and the canonical RefundSettled
+// (provisional=false) lands. Both events of the two-event lifecycle are asserted.
+TEST(BridgeSmoke, ReturnRoundTripProvisionalThenCanonical) {
     const char* target = engineTarget();
     if (!target) {
         GTEST_SKIP() << "set BLISSMONT_ENGINE_TARGET to a running engine to run this";
@@ -153,14 +154,31 @@ TEST(BridgeSmoke, ReturnRoundTripIssuesProvisionalCreditNote) {
     ASSERT_TRUE(returnLinesSpy.wait(2000)) << "SetReturnLineQty did not re-emit the context";
     ASSERT_GE(bridge.returnLines()->rowCount(), 1);
 
-    // CommitReturn → a provisional credit note, and the model clears.
+    // CommitReturn → a provisional credit note, and the model clears. Arm the canonical
+    // spy first — the background drain can reconcile and emit RefundSettled quickly.
     QSignalSpy committedSpy(&bridge, &PosEngineBridge::returnCommitted);
+    QSignalSpy refundSettledSpy(&bridge, &PosEngineBridge::refundSettled);
     bridge.commitReturn();
     ASSERT_TRUE(committedSpy.wait(3000)) << "CommitReturn never produced ReturnCommitted";
     const QString creditNoteNo = committedSpy.at(0).at(0).toString();
     const bool provisional = committedSpy.at(0).at(1).toBool();
     EXPECT_FALSE(creditNoteNo.isEmpty()) << "credit note number missing";
-    EXPECT_TRUE(provisional) << "offline commit should be provisional until sync";
+    EXPECT_TRUE(provisional) << "the commit event is always the provisional half";
+
+    // Canonical half: the background drain syncs the refund and emits RefundSettled with
+    // provisional=false and a server refund number. Drain past any provisional RefundSettled.
+    bool sawCanonical = false;
+    QString canonicalRefundNo;
+    while (refundSettledSpy.wait(4000)) {
+        const auto row = refundSettledSpy.takeFirst();
+        if (!row.at(1).toBool()) {  // provisional=false → canonical
+            sawCanonical = true;
+            canonicalRefundNo = row.at(0).toString();
+            break;
+        }
+    }
+    EXPECT_TRUE(sawCanonical) << "canonical RefundSettled never arrived (is the engine draining?)";
+    EXPECT_FALSE(canonicalRefundNo.isEmpty()) << "canonical refund number missing";
 
     bridge.disconnectFromEngine();
 }
