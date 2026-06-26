@@ -56,15 +56,24 @@ TEST(BridgeSmoke, TenderAddAndRemoveRoundTrip) {
     bridge.connectToEngine(QString::fromUtf8(target));
     ASSERT_TRUE(connSpy.wait(2000));
 
+    // Drain past the initial empty-cart snapshot the engine sends on connect: wait until
+    // the SCANNED line is actually in the cart. A bare single wait can return on that empty
+    // snapshot, leaving balanceDue at "0.00" — which the engine then rejects as a zero tender.
     QSignalSpy cartSpy(bridge.cart(), &QAbstractItemModel::modelReset);
     bridge.scanItem(QStringLiteral("TESTSKU"));
-    ASSERT_TRUE(cartSpy.wait(2000));
+    while (bridge.cart()->rowCount() == 0 && cartSpy.wait(2000)) {
+    }
+    ASSERT_GE(bridge.cart()->rowCount(), 1) << "scanned line never arrived in the cart";
 
-    // Tender the full balance → a tender row appears.
+    // Tender the full balance → a tender row appears. Read balanceDue only now that the
+    // scanned line is present, so it is the real (non-zero) balance the engine will accept.
+    const QString balance = bridge.summary()->balanceDue();
     QSignalSpy tendersSpy(bridge.tenders(), &QAbstractItemModel::modelReset);
-    bridge.addTender(QStringLiteral("cash"), bridge.summary()->balanceDue(), QString());
-    ASSERT_TRUE(tendersSpy.wait(2000));
-    ASSERT_GE(bridge.tenders()->rowCount(), 1);
+    bridge.addTender(QStringLiteral("cash"), balance, QString());
+    while (bridge.tenders()->rowCount() == 0 && tendersSpy.wait(2000)) {
+    }
+    ASSERT_GE(bridge.tenders()->rowCount(), 1)
+        << "tender (amount " << balance.toStdString() << ") did not land";
 
     const int tenderNo =
         bridge.tenders()
