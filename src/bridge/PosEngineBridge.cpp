@@ -279,9 +279,9 @@ void PosEngineBridge::setReturnLineQty(int originalLineNo, const QString& qty, b
     writeCommand(std::move(cmd));
 }
 
-void PosEngineBridge::commitReturn() {
+void PosEngineBridge::commitReturn(const QString& refundMethod) {
     Command cmd;
-    cmd.mutable_commit_return();
+    cmd.mutable_commit_return()->set_refund_method(refundMethod.toStdString());
     writeCommand(std::move(cmd));
 }
 

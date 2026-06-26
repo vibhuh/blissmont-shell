@@ -4,10 +4,10 @@
 // owns the return context and re-emits a full ReturnContextLoaded on every edit, so QML binds
 // the returnable lines directly to the bridge's ReturnLineModel and the totals to the
 // ReturnCommitted event. Responsibilities: dispatch start/setLineQty/commit, gate the blind
-// flag and the unsupported "both" refund mode (Phase A), derive completion from the engine's
-// re-emitted selection, and fold the two-event lifecycle (ReturnCommitted → RefundSettled)
-// into a display-only status. No QML dependency, so it is unit-tested headless against a
-// bridge + ConfigService.
+// flag, capture the cashier's refund-tender pick under refund_tender_mode="both", derive
+// completion from the engine's re-emitted selection, and fold the two-event lifecycle
+// (ReturnCommitted → RefundSettled) into a display-only status. No QML dependency, so it is
+// unit-tested headless against a bridge + ConfigService.
 #pragma once
 
 #include <QObject>
@@ -31,11 +31,14 @@ class ReturnViewModel : public QObject {
     // The original receipt the context was loaded from (panel title).
     Q_PROPERTY(QString originalReceiptNo READ originalReceiptNo NOTIFY stateChanged)
     // True when the return can be committed: a context is active, at least one line has a
-    // positive selected qty, and the refund mode is supported (Phase A: not "both").
+    // positive selected qty, and (under "both") a refund tender has been picked.
     Q_PROPERTY(bool canCommit READ canCommit NOTIFY stateChanged)
-    // False when refund_tender_mode == "both" (split original+cash) — unsupported in Phase A.
-    // The panel shows a "not supported on this terminal" banner and disables commit.
-    Q_PROPERTY(bool refundModeSupported READ refundModeSupported NOTIFY stateChanged)
+    // True when refund_tender_mode == "both": the cashier must pick the refund tender
+    // (refundChoice) before committing. False for original/cash (the engine resolves it).
+    Q_PROPERTY(bool needsRefundChoice READ needsRefundChoice NOTIFY stateChanged)
+    // The cashier's refund-tender choice under "both": "original" | "cash" (empty until
+    // picked). Ignored when needsRefundChoice is false.
+    Q_PROPERTY(QString refundChoice READ refundChoice NOTIFY stateChanged)
     // True when blind returns are permitted (allow_blind_return) — gates the blind affordance.
     Q_PROPERTY(bool allowBlind READ allowBlind NOTIFY stateChanged)
     // Free-text status: rejects, the provisional credit note, then its canonical reconcile.
@@ -56,7 +59,8 @@ public:
     [[nodiscard]] bool active() const;
     [[nodiscard]] QString originalReceiptNo() const { return originalReceiptNo_; }
     [[nodiscard]] bool canCommit() const;
-    [[nodiscard]] bool refundModeSupported() const;
+    [[nodiscard]] bool needsRefundChoice() const;
+    [[nodiscard]] QString refundChoice() const { return refundChoice_; }
     [[nodiscard]] bool allowBlind() const;
     [[nodiscard]] QString statusMessage() const { return statusMessage_; }
 
@@ -66,8 +70,11 @@ public:
     // Edit one line's selected qty / restock. The engine re-emits ReturnContextLoaded and the
     // ReturnLineModel resets — never mutate locally.
     Q_INVOKABLE void setLineQty(int originalLineNo, const QString& qty, bool restock);
+    // Pick the refund tender under "both": "original" (refund to the original method) or
+    // "cash". Cleared on a new context and after commit.
+    Q_INVOKABLE void setRefundChoice(const QString& choice);
     // Issue the credit note. Blocks (status, no command) when canCommit is false — including
-    // the unsupported "both" refund mode (Phase A safety, mirrors the engine reject).
+    // when "both" mode still needs a refund-tender choice.
     Q_INVOKABLE void commit();
 
 signals:
@@ -83,6 +90,7 @@ private:
     blissmont::bridge::PosEngineBridge* bridge_ = nullptr;
     blissmont::services::ConfigService* config_ = nullptr;
     QString originalReceiptNo_;
+    QString refundChoice_;  // "original" | "cash" under "both"; empty otherwise
     QString statusMessage_;
 };
 

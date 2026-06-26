@@ -67,7 +67,9 @@ public:
     Q_INVOKABLE void recordPayout(const QString& amount, const QString& category, const QString& note);
     Q_INVOKABLE void startReturn(const QString& receiptNo, bool blind);
     Q_INVOKABLE void setReturnLineQty(int originalLineNo, const QString& qty, bool restock);
-    Q_INVOKABLE void commitReturn();
+    // refundMethod is the cashier's choice ("original" | "cash") under
+    // refund_tender_mode="both"; empty for original/cash modes (engine resolves).
+    Q_INVOKABLE void commitReturn(const QString& refundMethod = QString());
     Q_INVOKABLE void runEod();
 
 signals:

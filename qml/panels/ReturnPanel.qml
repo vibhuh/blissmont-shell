@@ -7,7 +7,7 @@ import Blissmont.Shell
 // Three steps: load a finalized bill (receipt no, or blind when allowed) → select lines +
 // qty + restock → commit the credit note. The engine owns the context and all fiscal math;
 // this panel dispatches start/setLineQty/commit and binds the returnable lines + status to
-// the bridge. Phase A: the "both" split-refund mode is shown as unsupported (commit disabled).
+// the bridge. Under refund_tender_mode="both" the cashier picks the refund tender first.
 Item {
     id: root
 
@@ -78,24 +78,46 @@ Item {
             }
         }
 
-        // ── "both" refund mode is unsupported in Phase A ──────────────────────
-        Rectangle {
+        // ── Refund tender choice (refund_tender_mode="both") ──────────────────
+        // The cashier picks where the whole refund goes; commit stays disabled until then.
+        ColumnLayout {
             Layout.fillWidth: true
-            Layout.preferredHeight: bothWarn.implicitHeight + 2 * Theme.unit
-            visible: rvm.active && !rvm.refundModeSupported
-            color: Theme.surfaceAlt
-            radius: Theme.radius
-            border.color: Theme.danger
+            visible: rvm.active && rvm.needsRefundChoice
+            spacing: Theme.unit
             Text {
-                id: bothWarn
-                anchors.fill: parent
-                anchors.margins: Theme.unit
-                text: qsTr("Split refund (original + cash) is not supported on this terminal.")
-                color: Theme.danger
+                text: qsTr("Refund to")
+                color: Theme.textMuted
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontBody
-                wrapMode: Text.WordWrap
-                verticalAlignment: Text.AlignVCenter
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: Theme.unit
+                Repeater {
+                    model: [{ key: "original", label: qsTr("Original tender") },
+                            { key: "cash", label: qsTr("Cash") }]
+                    delegate: Button {
+                        id: choiceBtn
+                        required property var modelData
+                        Layout.fillWidth: true
+                        text: choiceBtn.modelData.label
+                        highlighted: rvm.refundChoice === choiceBtn.modelData.key
+                        onClicked: rvm.setRefundChoice(choiceBtn.modelData.key)
+                        contentItem: Text {
+                            text: choiceBtn.text
+                            color: Theme.text
+                            font.family: Theme.fontFamily
+                            font.pixelSize: Theme.fontBody
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                        }
+                        background: Rectangle {
+                            color: choiceBtn.highlighted ? Theme.surfaceAlt : Theme.surface
+                            radius: Theme.radius
+                            border.color: choiceBtn.highlighted ? Theme.accent : Theme.border
+                        }
+                    }
+                }
             }
         }
 
