@@ -2,6 +2,7 @@
 #include "bridge/PosEngineBridge.hpp"
 
 #include <QMetaObject>
+#include <QVariantMap>
 
 #include <utility>
 
@@ -10,7 +11,8 @@ namespace blissmont::bridge {
 PosEngineBridge::PosEngineBridge(QObject* parent)
     : QObject(parent),
       cart_(new blissmont::models::CartLineModel(this)),
-      summary_(new blissmont::models::CartSummary(this)) {}
+      summary_(new blissmont::models::CartSummary(this)),
+      tenders_(new blissmont::models::TenderListModel(this)) {}
 
 PosEngineBridge::~PosEngineBridge() { disconnectFromEngine(); }
 
@@ -82,6 +84,7 @@ void PosEngineBridge::applyEvent(const Event& evt) {
         case E::kCartUpdated:
             cart_->reset(evt.cart_updated());        // full snapshot reset — carts are small
             summary_->update(evt.cart_updated());
+            tenders_->reset(evt.cart_updated());     // running tenders ride the same snapshot
             break;
         case E::kOrderSettled:
             emit orderSettled(QString::fromStdString(evt.order_settled().receipt_no()),
@@ -108,10 +111,26 @@ void PosEngineBridge::applyEvent(const Event& evt) {
             // Project the device-domain TerminalConfig onto plain Qt types for the
             // services; the same snapshot lands on connect, reconnect, and change.
             const auto& cfg = evt.config_updated().config();
+            // Project the repeated device-domain PaymentMethod into plain Qt rows
+            // (contracts v1.2.0). Only the device-surface fields cross — the proto
+            // type carries no secrets, so the boundary is enforced by the contract.
+            QVariantList paymentMethods;
+            paymentMethods.reserve(cfg.payment_methods_size());
+            for (const auto& pm : cfg.payment_methods()) {
+                QVariantMap row;
+                row[QStringLiteral("method")] = QString::fromStdString(pm.method());
+                row[QStringLiteral("displayName")] = QString::fromStdString(pm.display_name());
+                row[QStringLiteral("hotkey")] = QString::fromStdString(pm.hotkey());
+                row[QStringLiteral("sortOrder")] = pm.sort_order();
+                row[QStringLiteral("enabled")] = pm.enabled();
+                row[QStringLiteral("referenceMode")] = QString::fromStdString(pm.reference_mode());
+                paymentMethods.push_back(row);
+            }
             emit configUpdated(cfg.allow_returns(), cfg.payout_enabled(),
                                cfg.allow_discounts(),
                                QString::fromStdString(cfg.tender_complete_mode()),
-                               QString::fromStdString(cfg.currency_symbol()));
+                               QString::fromStdString(cfg.currency_symbol()),
+                               paymentMethods);
             break;
         }
         case E::kAuthRequired:
@@ -179,6 +198,12 @@ void PosEngineBridge::addTender(const QString& method, const QString& amount,
     m->set_method(method.toStdString());
     m->set_amount_str(amount.toStdString());
     m->set_reference(reference.toStdString());
+    writeCommand(std::move(cmd));
+}
+
+void PosEngineBridge::removeTender(int tenderNo) {
+    Command cmd;
+    cmd.mutable_remove_tender()->set_tender_no(tenderNo);
     writeCommand(std::move(cmd));
 }
 

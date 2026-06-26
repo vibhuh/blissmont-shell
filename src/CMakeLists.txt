@@ -18,7 +18,9 @@ qt_add_library(shell STATIC
   bridge/PosEngineBridge.cpp        bridge/PosEngineBridge.hpp
   models/CartLineModel.cpp          models/CartLineModel.hpp
   models/CartSummary.cpp            models/CartSummary.hpp
+  models/TenderListModel.cpp        models/TenderListModel.hpp
   viewmodels/BillingViewModel.cpp   viewmodels/BillingViewModel.hpp
+  viewmodels/TenderViewModel.cpp    viewmodels/TenderViewModel.hpp
   services/ConnectionService.cpp    services/ConnectionService.hpp
   services/ConfigService.cpp        services/ConfigService.hpp
 )
@@ -50,6 +52,7 @@ set(SHELL_QML_FILES
   Main.qml
   screens/BillingScreen.qml
   panels/ItemPanel.qml
+  panels/TenderPanel.qml
   components/ScanField.qml
   components/BillTable.qml
   components/StatusLine.qml
@@ -71,6 +74,7 @@ qt_add_qml_module(shell
     ${CMAKE_SOURCE_DIR}/qml/Main.qml
     ${CMAKE_SOURCE_DIR}/qml/screens/BillingScreen.qml
     ${CMAKE_SOURCE_DIR}/qml/panels/ItemPanel.qml
+    ${CMAKE_SOURCE_DIR}/qml/panels/TenderPanel.qml
     ${CMAKE_SOURCE_DIR}/qml/components/ScanField.qml
     ${CMAKE_SOURCE_DIR}/qml/components/BillTable.qml
     ${CMAKE_SOURCE_DIR}/qml/components/StatusLine.qml

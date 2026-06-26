@@ -13,6 +13,7 @@
 #include <QString>
 #include <QThread>
 #include <QMutex>
+#include <QVariantList>
 
 #include <atomic>
 #include <memory>
@@ -22,6 +23,7 @@
 
 #include "models/CartLineModel.hpp"
 #include "models/CartSummary.hpp"
+#include "models/TenderListModel.hpp"
 
 namespace blissmont::bridge {
 
@@ -32,6 +34,7 @@ class PosEngineBridge : public QObject {
 
     Q_PROPERTY(blissmont::models::CartLineModel* cart READ cart CONSTANT)
     Q_PROPERTY(blissmont::models::CartSummary* summary READ summary CONSTANT)
+    Q_PROPERTY(blissmont::models::TenderListModel* tenders READ tenders CONSTANT)
     Q_PROPERTY(bool connected READ connected NOTIFY connectionChanged)
 
 public:
@@ -40,6 +43,7 @@ public:
 
     [[nodiscard]] blissmont::models::CartLineModel* cart() const { return cart_; }
     [[nodiscard]] blissmont::models::CartSummary* summary() const { return summary_; }
+    [[nodiscard]] blissmont::models::TenderListModel* tenders() const { return tenders_; }
     [[nodiscard]] bool connected() const { return connected_.load(std::memory_order_relaxed); }
 
     // ── UI -> engine (one per Command oneof; thin: build + write) ─────────────
@@ -53,6 +57,7 @@ public:
     Q_INVOKABLE void removeLine(int lineNo);
     Q_INVOKABLE void setOrderDiscount(const QString& discount);
     Q_INVOKABLE void addTender(const QString& method, const QString& amount, const QString& reference);
+    Q_INVOKABLE void removeTender(int tenderNo);
     Q_INVOKABLE void settle();
     Q_INVOKABLE void voidCart();
     Q_INVOKABLE void addMiscCharge(const QString& description, const QString& amount);
@@ -68,11 +73,15 @@ signals:
     void shiftStateChanged(const QString& shiftId, const QString& status);
     void syncStatusChanged(bool online, int pending);
     // Device config relayed by the engine over the Session stream (contracts
-    // v1.1.0). Emitted on connect, on reconnect, and on every config change, with
-    // the device-domain fields the UI gates on. Carries plain Qt types so services
-    // stay free of any gRPC/proto dependency (the bridge owns that translation).
+    // v1.1.0; payment methods added in v1.2.0). Emitted on connect, on reconnect,
+    // and on every config change, with the device-domain fields the UI gates on.
+    // Carries plain Qt types so services stay free of any gRPC/proto dependency
+    // (the bridge owns that translation). paymentMethods is a QVariantList of
+    // QVariantMap rows {method, displayName, hotkey, sortOrder, enabled,
+    // referenceMode} — the device-surface fields only; tender secrets never cross.
     void configUpdated(bool allowReturns, bool payoutEnabled, bool allowDiscounts,
-                       const QString& tenderCompleteMode, const QString& currencySymbol);
+                       const QString& tenderCompleteMode, const QString& currencySymbol,
+                       const QVariantList& paymentMethods);
     void authRequired(const QString& action, const QString& reason);
     void returnContextLoaded();
     void historyResults();
@@ -89,6 +98,7 @@ private:
 
     blissmont::models::CartLineModel* cart_;
     blissmont::models::CartSummary* summary_;
+    blissmont::models::TenderListModel* tenders_;
 
     std::shared_ptr<grpc::Channel> channel_;
     std::unique_ptr<blissmont::terminal::v1::TerminalEngine::Stub> stub_;
