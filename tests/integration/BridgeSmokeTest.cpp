@@ -109,8 +109,15 @@ TEST(BridgeSmoke, ReturnRoundTripIssuesProvisionalCreditNote) {
 
     PosEngineBridge bridge;
     QSignalSpy connSpy(&bridge, &PosEngineBridge::connectionChanged);
+    QSignalSpy cfgSpy(&bridge, &PosEngineBridge::configUpdated);  // refund mode rides arg 7
     bridge.connectToEngine(QString::fromUtf8(target));
     ASSERT_TRUE(connSpy.wait(2000));
+    // This test commits with no explicit refund method (original/cash auto-resolve). Under
+    // "both" the engine requires a pick, so skip — that path is ReturnBothModePickThenCommit.
+    if (cfgSpy.isEmpty()) cfgSpy.wait(2000);
+    if (!cfgSpy.isEmpty() && cfgSpy.at(0).at(7).toString() == QStringLiteral("both")) {
+        GTEST_SKIP() << "engine in refund_tender_mode=both; covered by the both-mode test";
+    }
 
     // Sell one line (drain past the initial empty-cart snapshot first).
     QSignalSpy cartSpy(bridge.cart(), &QAbstractItemModel::modelReset);
@@ -154,6 +161,70 @@ TEST(BridgeSmoke, ReturnRoundTripIssuesProvisionalCreditNote) {
     const bool provisional = committedSpy.at(0).at(1).toBool();
     EXPECT_FALSE(creditNoteNo.isEmpty()) << "credit note number missing";
     EXPECT_TRUE(provisional) << "offline commit should be provisional until sync";
+
+    bridge.disconnectFromEngine();
+}
+
+// Phase B over real gRPC: under refund_tender_mode="both" the cashier must pick the refund
+// tender. Committing with no choice is rejected (REFUND_METHOD_REQUIRED); committing with an
+// explicit "cash" choice issues the credit note. Requires the dev engine started with
+// BLISSMONT_REFUND_TENDER_MODE=both; otherwise this skips (the engine drives the mode).
+TEST(BridgeSmoke, ReturnBothModePickThenCommit) {
+    const char* target = engineTarget();
+    if (!target) {
+        GTEST_SKIP() << "set BLISSMONT_ENGINE_TARGET to a running engine to run this";
+    }
+    using blissmont::models::ReturnLineModel;
+
+    PosEngineBridge bridge;
+    QSignalSpy connSpy(&bridge, &PosEngineBridge::connectionChanged);
+    QSignalSpy cfgSpy(&bridge, &PosEngineBridge::configUpdated);
+    bridge.connectToEngine(QString::fromUtf8(target));
+    ASSERT_TRUE(connSpy.wait(2000));
+    if (cfgSpy.isEmpty()) cfgSpy.wait(2000);
+    if (cfgSpy.isEmpty() || cfgSpy.at(0).at(7).toString() != QStringLiteral("both")) {
+        GTEST_SKIP() << "engine not in refund_tender_mode=both (set BLISSMONT_REFUND_TENDER_MODE=both)";
+    }
+
+    // Sell + settle a bill to return against.
+    QSignalSpy cartSpy(bridge.cart(), &QAbstractItemModel::modelReset);
+    bridge.scanItem(QStringLiteral("TESTSKU"));
+    while (bridge.cart()->rowCount() == 0 && cartSpy.wait(2000)) {
+    }
+    ASSERT_GE(bridge.cart()->rowCount(), 1);
+    QSignalSpy settledSpy(&bridge, &PosEngineBridge::orderSettled);
+    bridge.addTender(QStringLiteral("cash"), bridge.summary()->balanceDue(), QString());
+    bridge.settle();
+    ASSERT_TRUE(settledSpy.wait(3000));
+    const QString receiptNo = settledSpy.at(0).at(0).toString();
+    ASSERT_FALSE(receiptNo.isEmpty());
+
+    // Load the return + select the line.
+    QSignalSpy ctxSpy(&bridge, &PosEngineBridge::returnContextLoaded);
+    QSignalSpy returnLinesSpy(bridge.returnLines(), &QAbstractItemModel::modelReset);
+    bridge.startReturn(receiptNo, /*blind=*/false);
+    ASSERT_TRUE(ctxSpy.wait(3000));
+    ASSERT_GE(bridge.returnLines()->rowCount(), 1);
+    const int lineNo =
+        bridge.returnLines()
+            ->data(bridge.returnLines()->index(0, 0), ReturnLineModel::OriginalLineNoRole)
+            .toInt();
+    returnLinesSpy.clear();
+    bridge.setReturnLineQty(lineNo, QStringLiteral("1"), /*restock=*/true);
+    ASSERT_TRUE(returnLinesSpy.wait(2000));
+
+    // (1) Commit with NO chosen method → the engine rejects it; no credit note.
+    QSignalSpy rejectedSpy(&bridge, &PosEngineBridge::commandRejected);
+    QSignalSpy committedSpy(&bridge, &PosEngineBridge::returnCommitted);
+    bridge.commitReturn(QString());
+    ASSERT_TRUE(rejectedSpy.wait(2000)) << "empty refund method should be rejected under 'both'";
+    EXPECT_EQ(rejectedSpy.at(0).at(0).toString(), QStringLiteral("REFUND_METHOD_REQUIRED"));
+    EXPECT_TRUE(committedSpy.isEmpty()) << "no credit note may be issued on the rejected commit";
+
+    // (2) Commit with an explicit "cash" choice → the credit note is issued.
+    bridge.commitReturn(QStringLiteral("cash"));
+    ASSERT_TRUE(committedSpy.wait(3000)) << "picked commit never produced ReturnCommitted";
+    EXPECT_FALSE(committedSpy.at(0).at(0).toString().isEmpty()) << "credit note number missing";
 
     bridge.disconnectFromEngine();
 }

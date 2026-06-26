@@ -86,34 +86,46 @@ TEST(ReturnViewModel, CanCommitOnlyWithASelectedLine) {
     EXPECT_TRUE(rvm.canCommit());
 }
 
-TEST(ReturnViewModel, BothRefundModeIsUnsupportedAndBlocksCommit) {
+TEST(ReturnViewModel, BothModeRequiresARefundChoiceBeforeCommit) {
     PosEngineBridge bridge;
     ConfigService config;
     ReturnViewModel rvm;
     rvm.setBridge(&bridge);
     rvm.setConfig(&config);
-    applyReturns(config, QStringLiteral("both"));  // split refund — Phase A unsupported
+    applyReturns(config, QStringLiteral("both"));  // cashier must pick the refund tender
     loadContext(bridge, "1.0000000000");
 
-    EXPECT_FALSE(rvm.refundModeSupported());
-    EXPECT_FALSE(rvm.canCommit());  // disabled even with a selected line
+    EXPECT_TRUE(rvm.needsRefundChoice());
+    EXPECT_FALSE(rvm.canCommit());  // a selected line is not enough without a pick
 
-    // commit() is blocked with a status message and sends nothing.
+    // commit() with no pick is blocked with a status message and sends nothing.
     rvm.commit();
     EXPECT_FALSE(rvm.statusMessage().isEmpty());
+
+    // Picking a tender enables commit; the choice is switchable.
+    rvm.setRefundChoice(QStringLiteral("original"));
+    EXPECT_EQ(rvm.refundChoice(), QStringLiteral("original"));
+    EXPECT_TRUE(rvm.canCommit());
+    rvm.setRefundChoice(QStringLiteral("cash"));
+    EXPECT_EQ(rvm.refundChoice(), QStringLiteral("cash"));
+    EXPECT_TRUE(rvm.canCommit());
 }
 
-TEST(ReturnViewModel, CashAndOriginalModesAreSupported) {
+TEST(ReturnViewModel, CashAndOriginalModesNeedNoChoice) {
     PosEngineBridge bridge;
     ConfigService config;
     ReturnViewModel rvm;
     rvm.setBridge(&bridge);
     rvm.setConfig(&config);
+    loadContext(bridge, "1.0000000000");
 
     applyReturns(config, QStringLiteral("cash"));
-    EXPECT_TRUE(rvm.refundModeSupported());
+    EXPECT_FALSE(rvm.needsRefundChoice());
+    EXPECT_TRUE(rvm.canCommit());  // committable straight away
+
     applyReturns(config, QStringLiteral("original"));
-    EXPECT_TRUE(rvm.refundModeSupported());
+    EXPECT_FALSE(rvm.needsRefundChoice());
+    EXPECT_TRUE(rvm.canCommit());
 }
 
 TEST(ReturnViewModel, BlindReturnGatedByConfig) {

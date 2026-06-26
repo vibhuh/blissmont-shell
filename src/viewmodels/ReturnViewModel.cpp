@@ -19,6 +19,9 @@ void ReturnViewModel::setBridge(blissmont::bridge::PosEngineBridge* bridge) {
                     &ReturnViewModel::stateChanged);
         }
         connect(bridge_, &B::returnContextLoaded, this, [this](const QString& receiptNo) {
+            // A genuinely new bill clears the refund pick; a re-emit of the SAME context
+            // (the engine re-sends ReturnContextLoaded after every line edit) keeps it.
+            if (receiptNo != originalReceiptNo_) refundChoice_.clear();
             originalReceiptNo_ = receiptNo;
             setStatus(QString());
             emit stateChanged();
@@ -27,6 +30,7 @@ void ReturnViewModel::setBridge(blissmont::bridge::PosEngineBridge* bridge) {
                 [this](const QString& creditNoteNo, bool provisional, const QString& total,
                        const QString& taxReversed) {
                     originalReceiptNo_.clear();
+                    refundChoice_.clear();
                     setStatus(tr("Credit note %1%2 — total %3, tax reversed %4")
                                   .arg(creditNoteNo, provisional ? tr(" (provisional)") : QString(),
                                        total, taxReversed));
@@ -70,10 +74,15 @@ bool ReturnViewModel::active() const {
     return bridge_ && bridge_->returnLines() && bridge_->returnLines()->rowCount() > 0;
 }
 
-bool ReturnViewModel::refundModeSupported() const {
-    // Phase A: "both" (split original + cash) is not yet wired — the engine rejects commit
-    // with REFUND_MODE_NOT_SUPPORTED, so the panel must not offer it.
-    return !config_ || config_->refundTenderMode() != QStringLiteral("both");
+bool ReturnViewModel::needsRefundChoice() const {
+    // Under "both" the cashier picks the refund tender; original/cash are engine-resolved.
+    return config_ && config_->refundTenderMode() == QStringLiteral("both");
+}
+
+void ReturnViewModel::setRefundChoice(const QString& choice) {
+    if (refundChoice_ == choice) return;
+    refundChoice_ = choice;  // "original" | "cash"
+    emit stateChanged();
 }
 
 bool ReturnViewModel::allowBlind() const {
@@ -97,7 +106,9 @@ bool ReturnViewModel::hasSelectedLines() const {
 }
 
 bool ReturnViewModel::canCommit() const {
-    return active() && refundModeSupported() && hasSelectedLines();
+    if (!active() || !hasSelectedLines()) return false;
+    if (needsRefundChoice() && refundChoice_.isEmpty()) return false;  // "both" needs a pick
+    return true;
 }
 
 void ReturnViewModel::startReturn(const QString& receiptNo, bool blind) {
@@ -117,15 +128,17 @@ void ReturnViewModel::setLineQty(int originalLineNo, const QString& qty, bool re
 
 void ReturnViewModel::commit() {
     if (!bridge_) return;
-    if (!refundModeSupported()) {
-        setStatus(tr("Split refund (original + cash) is not yet supported on this terminal"));
-        return;  // blocked — Phase A safety, mirrors the engine reject
+    if (needsRefundChoice() && refundChoice_.isEmpty()) {
+        setStatus(tr("Choose a refund method (original or cash)"));
+        return;  // blocked — no command sent
     }
     if (!canCommit()) {
         setStatus(tr("Select at least one line to return"));
         return;
     }
-    bridge_->commitReturn();
+    // Under "both" the engine needs the cashier's choice; for original/cash it resolves
+    // the method itself, so send empty.
+    bridge_->commitReturn(needsRefundChoice() ? refundChoice_ : QString());
 }
 
 void ReturnViewModel::setStatus(const QString& message) {
