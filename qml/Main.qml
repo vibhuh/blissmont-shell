@@ -25,9 +25,9 @@ ApplicationWindow {
         // engine re-pushes it on every (re)connect, so ConfigService rehydrates here
         // with no re-sync logic — the same pattern as sync status above.
         function onConfigUpdated(allowReturns, payoutEnabled, allowDiscounts, tenderCompleteMode, currencySymbol, paymentMethods,
-                                 allowBlindReturn, refundTenderMode, returnRequiresAuth, restockDefault, allowPartialReturn) {
+                                 allowBlindReturn, refundTenderMode, returnRequiresAuth, restockDefault, allowPartialReturn, heldCartExpiry) {
             ConfigService.applyConfig(allowReturns, payoutEnabled, allowDiscounts, tenderCompleteMode, currencySymbol, paymentMethods,
-                                      allowBlindReturn, refundTenderMode, returnRequiresAuth, restockDefault, allowPartialReturn)
+                                      allowBlindReturn, refundTenderMode, returnRequiresAuth, restockDefault, allowPartialReturn, heldCartExpiry)
         }
     }
 
@@ -36,12 +36,13 @@ ApplicationWindow {
     Component.onCompleted: PosEngineBridge.connectToEngine()
 
     // ── Frozen keymap (UX §1). Skeleton: nav keys live; others are placeholders. ─
-    Shortcut { sequences: ["F12"]; onActivated: billing.focusScan() }       // scan-is-home
-    Shortcut { sequences: ["F11"]; onActivated: billing.navState = "history" }
-    Shortcut { sequences: ["F6"];  onActivated: billing.navState = "tender" }
-    Shortcut { sequences: ["F7"];  onActivated: billing.navState = "payout" }
-    Shortcut { sequences: ["F9"];  onActivated: billing.navState = "return" }
-    Shortcut { sequences: ["Esc"]; onActivated: billing.navState = "item" }
+    Shortcut { sequences: ["F12"];    onActivated: billing.focusScan() }       // scan-is-home
+    Shortcut { sequences: ["F11"];    onActivated: billing.navState = "history" }
+    Shortcut { sequences: ["F6"];     onActivated: billing.navState = "tender" }
+    Shortcut { sequences: ["F7"];     onActivated: billing.navState = "suspend" }  // UX §1: F7 = Suspend
+    Shortcut { sequences: ["F9"];     onActivated: billing.navState = "return" }
+    Shortcut { sequences: ["Ctrl+O"]; onActivated: billing.navState = "payout" }    // UX §1: Ctrl+O = Payout
+    Shortcut { sequences: ["Esc"];    onActivated: billing.navState = "item" }
 
     BillingScreen {
         id: billing

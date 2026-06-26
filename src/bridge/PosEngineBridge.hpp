@@ -27,6 +27,7 @@
 #include "models/ReturnLineModel.hpp"
 #include "models/HistoryListModel.hpp"
 #include "models/BillDetailModel.hpp"
+#include "models/HeldCartModel.hpp"
 
 namespace blissmont::bridge {
 
@@ -41,6 +42,7 @@ class PosEngineBridge : public QObject {
     Q_PROPERTY(blissmont::models::ReturnLineModel* returnLines READ returnLines CONSTANT)
     Q_PROPERTY(blissmont::models::HistoryListModel* history READ history CONSTANT)
     Q_PROPERTY(blissmont::models::BillDetailModel* billDetail READ billDetail CONSTANT)
+    Q_PROPERTY(blissmont::models::HeldCartModel* heldCarts READ heldCarts CONSTANT)
     Q_PROPERTY(bool connected READ connected NOTIFY connectionChanged)
 
 public:
@@ -53,6 +55,7 @@ public:
     [[nodiscard]] blissmont::models::ReturnLineModel* returnLines() const { return returnLines_; }
     [[nodiscard]] blissmont::models::HistoryListModel* history() const { return history_; }
     [[nodiscard]] blissmont::models::BillDetailModel* billDetail() const { return billDetail_; }
+    [[nodiscard]] blissmont::models::HeldCartModel* heldCarts() const { return heldCarts_; }
     [[nodiscard]] bool connected() const { return connected_.load(std::memory_order_relaxed); }
 
     // ── UI -> engine (one per Command oneof; thin: build + write) ─────────────
@@ -84,6 +87,12 @@ public:
     Q_INVOKABLE void searchByCustomer(const QString& query);
     Q_INVOKABLE void reprintBill(const QString& receiptNo);
     Q_INVOKABLE void runEod();
+    // Suspend/resume (UX §10) — drafts are terminal-local. holdCart parks the current cart
+    // (the engine echoes the minted id via cartHeld); resumeCart restores one by id (the
+    // engine re-emits CartUpdated with status="held"); listHeldCarts fills the held-cart model.
+    Q_INVOKABLE void holdCart(const QString& label);
+    Q_INVOKABLE void resumeCart(const QString& heldCartId);
+    Q_INVOKABLE void listHeldCarts();
 
 signals:
     void connectionChanged();
@@ -108,7 +117,7 @@ signals:
                        const QVariantList& paymentMethods,
                        bool allowBlindReturn, const QString& refundTenderMode,
                        const QString& returnRequiresAuth, bool restockDefault,
-                       bool allowPartialReturn);
+                       bool allowPartialReturn, const QString& heldCartExpiry);
     void authRequired(const QString& action, const QString& reason);
     // The original bill's returnable lines have landed in returnLines (full snapshot).
     // Carries the original receipt for the panel title; the line payload is the model.
@@ -130,6 +139,12 @@ signals:
     // duplicate flag, so the two are distinguished by the caller's intent, not the payload.
     // Named *Loaded to avoid clashing with the billDetail() property getter.
     void billDetailLoaded(const QString& receiptNo);
+    // A cart was suspended (UX §10): the engine echoes the minted held-cart id (it was
+    // previously discarded). The shell surfaces this as the hold confirmation.
+    void cartHeld(const QString& heldCartId, const QString& label);
+    // A fresh active-holds set has landed in the heldCarts model (full snapshot). The row
+    // payload IS the model — this is the "holds changed" notify (mirrors historyResults).
+    void heldCartsListed();
 
 private:
     using Command = blissmont::terminal::v1::Command;
@@ -147,6 +162,7 @@ private:
     blissmont::models::ReturnLineModel* returnLines_;
     blissmont::models::HistoryListModel* history_;
     blissmont::models::BillDetailModel* billDetail_;
+    blissmont::models::HeldCartModel* heldCarts_;
 
     std::shared_ptr<grpc::Channel> channel_;
     std::unique_ptr<blissmont::terminal::v1::TerminalEngine::Stub> stub_;

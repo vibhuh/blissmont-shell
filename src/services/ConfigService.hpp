@@ -46,6 +46,9 @@ class ConfigService : public QObject {
     Q_PROPERTY(QString returnRequiresAuth READ returnRequiresAuth NOTIFY changed) // always|config|never
     Q_PROPERTY(bool restockDefault READ restockDefault NOTIFY changed)
     Q_PROPERTY(bool allowPartialReturn READ allowPartialReturn NOTIFY changed)
+    // ── Suspend/resume (UX §10) — display/UX only; the engine enforces expiry ──
+    // Duration string (e.g. "24h"); empty means the engine's end-of-day default.
+    Q_PROPERTY(QString heldCartExpiry READ heldCartExpiry NOTIFY changed)
 
 public:
     explicit ConfigService(QObject* parent = nullptr);
@@ -62,6 +65,7 @@ public:
     [[nodiscard]] QString returnRequiresAuth() const { return returnRequiresAuth_; }
     [[nodiscard]] bool restockDefault() const { return restockDefault_; }
     [[nodiscard]] bool allowPartialReturn() const { return allowPartialReturn_; }
+    [[nodiscard]] QString heldCartExpiry() const { return heldCartExpiry_; }
 
 public slots:
     // Hydrate from an engine ConfigUpdated event (relayed by PosEngineBridge, wired
@@ -75,7 +79,8 @@ public slots:
                      bool allowBlindReturn = false,
                      const QString& refundTenderMode = QStringLiteral("cash"),
                      const QString& returnRequiresAuth = QStringLiteral("never"),
-                     bool restockDefault = false, bool allowPartialReturn = false);
+                     bool restockDefault = false, bool allowPartialReturn = false,
+                     const QString& heldCartExpiry = QString());
 
 signals:
     void changed();
@@ -94,6 +99,7 @@ private:
     QString returnRequiresAuth_ = QStringLiteral("never");
     bool restockDefault_ = false;
     bool allowPartialReturn_ = false;
+    QString heldCartExpiry_;  // duration string e.g. "24h"; empty → engine end-of-day default
 };
 
 }  // namespace blissmont::services
