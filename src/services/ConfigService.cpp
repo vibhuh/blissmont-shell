@@ -29,11 +29,16 @@ ConfigService::ConfigService(QObject* parent) : QObject(parent) {}
 
 void ConfigService::applyConfig(bool allowReturns, bool payoutEnabled, bool allowDiscounts,
                                 const QString& tenderCompleteMode, const QString& currencySymbol,
-                                const QVariantList& paymentMethods) {
+                                const QVariantList& paymentMethods, bool allowBlindReturn,
+                                const QString& refundTenderMode, const QString& returnRequiresAuth,
+                                bool restockDefault, bool allowPartialReturn) {
     const QVariantList methods = enabledSorted(paymentMethods);
     if (loaded_ && allowReturns_ == allowReturns && payoutEnabled_ == payoutEnabled &&
         allowDiscounts_ == allowDiscounts && tenderCompleteMode_ == tenderCompleteMode &&
-        currencySymbol_ == currencySymbol && enabledPaymentMethods_ == methods) {
+        currencySymbol_ == currencySymbol && enabledPaymentMethods_ == methods &&
+        allowBlindReturn_ == allowBlindReturn && refundTenderMode_ == refundTenderMode &&
+        returnRequiresAuth_ == returnRequiresAuth && restockDefault_ == restockDefault &&
+        allowPartialReturn_ == allowPartialReturn) {
         return;  // unchanged — no spurious notify on every reconnect
     }
     loaded_ = true;
@@ -43,6 +48,11 @@ void ConfigService::applyConfig(bool allowReturns, bool payoutEnabled, bool allo
     tenderCompleteMode_ = tenderCompleteMode;
     currencySymbol_ = currencySymbol;
     enabledPaymentMethods_ = methods;
+    allowBlindReturn_ = allowBlindReturn;
+    refundTenderMode_ = refundTenderMode;
+    returnRequiresAuth_ = returnRequiresAuth;
+    restockDefault_ = restockDefault;
+    allowPartialReturn_ = allowPartialReturn;
     emit changed();
 }
 

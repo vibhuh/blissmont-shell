@@ -40,6 +40,12 @@ class ConfigService : public QObject {
     // (contracts v1.2.0). Disabled methods are dropped here — only tenderable
     // methods reach the UI.
     Q_PROPERTY(QVariantList enabledPaymentMethods READ enabledPaymentMethods NOTIFY changed)
+    // ── Returns policy (UX §9) — display/gate hints; the engine enforces each one ──
+    Q_PROPERTY(bool allowBlindReturn READ allowBlindReturn NOTIFY changed)
+    Q_PROPERTY(QString refundTenderMode READ refundTenderMode NOTIFY changed)     // original|cash|both
+    Q_PROPERTY(QString returnRequiresAuth READ returnRequiresAuth NOTIFY changed) // always|config|never
+    Q_PROPERTY(bool restockDefault READ restockDefault NOTIFY changed)
+    Q_PROPERTY(bool allowPartialReturn READ allowPartialReturn NOTIFY changed)
 
 public:
     explicit ConfigService(QObject* parent = nullptr);
@@ -51,6 +57,11 @@ public:
     [[nodiscard]] QString tenderCompleteMode() const { return tenderCompleteMode_; }
     [[nodiscard]] QString currencySymbol() const { return currencySymbol_; }
     [[nodiscard]] QVariantList enabledPaymentMethods() const { return enabledPaymentMethods_; }
+    [[nodiscard]] bool allowBlindReturn() const { return allowBlindReturn_; }
+    [[nodiscard]] QString refundTenderMode() const { return refundTenderMode_; }
+    [[nodiscard]] QString returnRequiresAuth() const { return returnRequiresAuth_; }
+    [[nodiscard]] bool restockDefault() const { return restockDefault_; }
+    [[nodiscard]] bool allowPartialReturn() const { return allowPartialReturn_; }
 
 public slots:
     // Hydrate from an engine ConfigUpdated event (relayed by PosEngineBridge, wired
@@ -60,7 +71,11 @@ public slots:
     // sorts by sortOrder before exposing it.
     void applyConfig(bool allowReturns, bool payoutEnabled, bool allowDiscounts,
                      const QString& tenderCompleteMode, const QString& currencySymbol,
-                     const QVariantList& paymentMethods);
+                     const QVariantList& paymentMethods,
+                     bool allowBlindReturn = false,
+                     const QString& refundTenderMode = QStringLiteral("cash"),
+                     const QString& returnRequiresAuth = QStringLiteral("never"),
+                     bool restockDefault = false, bool allowPartialReturn = false);
 
 signals:
     void changed();
@@ -74,6 +89,11 @@ private:
     QString tenderCompleteMode_ = QStringLiteral("confirm");
     QString currencySymbol_ = QStringLiteral("₹");  // ₹
     QVariantList enabledPaymentMethods_;            // enabled-only, sorted by sortOrder
+    bool allowBlindReturn_ = false;
+    QString refundTenderMode_ = QStringLiteral("cash");
+    QString returnRequiresAuth_ = QStringLiteral("never");
+    bool restockDefault_ = false;
+    bool allowPartialReturn_ = false;
 };
 
 }  // namespace blissmont::services

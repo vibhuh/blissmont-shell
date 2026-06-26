@@ -12,7 +12,8 @@ PosEngineBridge::PosEngineBridge(QObject* parent)
     : QObject(parent),
       cart_(new blissmont::models::CartLineModel(this)),
       summary_(new blissmont::models::CartSummary(this)),
-      tenders_(new blissmont::models::TenderListModel(this)) {}
+      tenders_(new blissmont::models::TenderListModel(this)),
+      returnLines_(new blissmont::models::ReturnLineModel(this)) {}
 
 PosEngineBridge::~PosEngineBridge() { disconnectFromEngine(); }
 
@@ -130,7 +131,12 @@ void PosEngineBridge::applyEvent(const Event& evt) {
                                cfg.allow_discounts(),
                                QString::fromStdString(cfg.tender_complete_mode()),
                                QString::fromStdString(cfg.currency_symbol()),
-                               paymentMethods);
+                               paymentMethods,
+                               cfg.allow_blind_return(),
+                               QString::fromStdString(cfg.refund_tender_mode()),
+                               QString::fromStdString(cfg.return_requires_auth()),
+                               cfg.restock_default(),
+                               cfg.allow_partial_return());
             break;
         }
         case E::kAuthRequired:
@@ -138,7 +144,26 @@ void PosEngineBridge::applyEvent(const Event& evt) {
                               QString::fromStdString(evt.auth_required().reason()));
             break;
         case E::kReturnContextLoaded:
-            emit returnContextLoaded();
+            // Full-snapshot reset of the returnable lines (same discipline as the cart),
+            // then notify with the original receipt for the panel title.
+            returnLines_->reset(evt.return_context_loaded());
+            emit returnContextLoaded(
+                QString::fromStdString(evt.return_context_loaded().original_receipt_no()));
+            break;
+        case E::kReturnCommitted:
+            // The engine clears its return context on commit; mirror that here so the
+            // returnable-lines model empties (the panel's "active" state ends).
+            returnLines_->clear();
+            emit returnCommitted(
+                QString::fromStdString(evt.return_committed().credit_note_no()),
+                evt.return_committed().provisional(),
+                QString::fromStdString(evt.return_committed().total_str()),
+                QString::fromStdString(evt.return_committed().tax_reversed_str()));
+            break;
+        case E::kRefundSettled:
+            emit refundSettled(QString::fromStdString(evt.refund_settled().refund_no()),
+                               evt.refund_settled().provisional(),
+                               QString::fromStdString(evt.refund_settled().total_str()));
             break;
         case E::kHistoryResults:
             emit historyResults();
@@ -242,6 +267,21 @@ void PosEngineBridge::startReturn(const QString& receiptNo, bool blind) {
     auto* m = cmd.mutable_start_return();
     m->set_original_receipt_no(receiptNo.toStdString());
     m->set_blind(blind);
+    writeCommand(std::move(cmd));
+}
+
+void PosEngineBridge::setReturnLineQty(int originalLineNo, const QString& qty, bool restock) {
+    Command cmd;
+    auto* m = cmd.mutable_set_return_line_qty();
+    m->set_original_line_no(originalLineNo);
+    m->set_qty_str(qty.toStdString());
+    m->set_restock(restock);
+    writeCommand(std::move(cmd));
+}
+
+void PosEngineBridge::commitReturn() {
+    Command cmd;
+    cmd.mutable_commit_return();
     writeCommand(std::move(cmd));
 }
 
