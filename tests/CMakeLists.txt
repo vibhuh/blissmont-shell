@@ -12,7 +12,9 @@ qt_add_executable(shell_unit_tests
   unit/TenderViewModelTest.cpp
   unit/ReturnViewModelTest.cpp
   unit/HistoryListModelTest.cpp
-  unit/HistoryViewModelTest.cpp)
+  unit/HistoryViewModelTest.cpp
+  unit/HeldCartModelTest.cpp
+  unit/SuspendResumeViewModelTest.cpp)
 target_link_libraries(shell_unit_tests PRIVATE shell GTest::gtest Qt6::Core Qt6::Test)
 add_test(NAME shell_unit_tests COMMAND shell_unit_tests)
 

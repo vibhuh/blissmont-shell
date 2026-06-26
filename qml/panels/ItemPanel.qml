@@ -41,12 +41,19 @@ Rectangle {
         }
     }
 
+    Loader {
+        anchors.fill: parent
+        active: panel.context === "suspend"
+        visible: active
+        sourceComponent: SuspendPanel {}
+    }
+
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: Theme.pad
         spacing: Theme.gap
         visible: panel.context !== "tender" && panel.context !== "return"
-                 && panel.context !== "history"
+                 && panel.context !== "history" && panel.context !== "suspend"
 
         Text {
             text: qsTr("Panel: %1").arg(panel.context)

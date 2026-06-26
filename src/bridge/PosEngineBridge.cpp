@@ -15,7 +15,8 @@ PosEngineBridge::PosEngineBridge(QObject* parent)
       tenders_(new blissmont::models::TenderListModel(this)),
       returnLines_(new blissmont::models::ReturnLineModel(this)),
       history_(new blissmont::models::HistoryListModel(this)),
-      billDetail_(new blissmont::models::BillDetailModel(this)) {}
+      billDetail_(new blissmont::models::BillDetailModel(this)),
+      heldCarts_(new blissmont::models::HeldCartModel(this)) {}
 
 PosEngineBridge::~PosEngineBridge() { disconnectFromEngine(); }
 
@@ -138,7 +139,8 @@ void PosEngineBridge::applyEvent(const Event& evt) {
                                QString::fromStdString(cfg.refund_tender_mode()),
                                QString::fromStdString(cfg.return_requires_auth()),
                                cfg.restock_default(),
-                               cfg.allow_partial_return());
+                               cfg.allow_partial_return(),
+                               QString::fromStdString(cfg.held_cart_expiry()));
             break;
         }
         case E::kAuthRequired:
@@ -178,6 +180,18 @@ void PosEngineBridge::applyEvent(const Event& evt) {
             // with the receipt for the panel title.
             billDetail_->reset(evt.bill_detail());
             emit billDetailLoaded(QString::fromStdString(evt.bill_detail().receipt_no()));
+            break;
+        case E::kCartHeld:
+            // The engine echoes the minted id after a hold (UX §10); surface it as the
+            // hold confirmation. The cart itself clears via the following CartUpdated.
+            emit cartHeld(QString::fromStdString(evt.cart_held().held_cart_id()),
+                          QString::fromStdString(evt.cart_held().label()));
+            break;
+        case E::kHeldCartsList:
+            // Full-snapshot reset of the active holds (same discipline as the cart/history),
+            // then notify — the row payload IS the model, never a bare signal.
+            heldCarts_->reset(evt.held_carts_list());
+            emit heldCartsListed();
             break;
         default:
             break;  // events filled in as panels land
@@ -323,6 +337,24 @@ void PosEngineBridge::reprintBill(const QString& receiptNo) {
 void PosEngineBridge::runEod() {
     Command cmd;
     cmd.mutable_run_eod();
+    writeCommand(std::move(cmd));
+}
+
+void PosEngineBridge::holdCart(const QString& label) {
+    Command cmd;
+    cmd.mutable_hold_cart()->set_label(label.toStdString());
+    writeCommand(std::move(cmd));
+}
+
+void PosEngineBridge::resumeCart(const QString& heldCartId) {
+    Command cmd;
+    cmd.mutable_resume_cart()->set_held_cart_id(heldCartId.toStdString());
+    writeCommand(std::move(cmd));
+}
+
+void PosEngineBridge::listHeldCarts() {
+    Command cmd;
+    cmd.mutable_list_held_carts();
     writeCommand(std::move(cmd));
 }
 
