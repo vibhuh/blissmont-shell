@@ -13,10 +13,12 @@
 
 #include "bridge/PosEngineBridge.hpp"
 #include "models/CartLineModel.hpp"
+#include "models/CartSummary.hpp"
 #include "models/TenderListModel.hpp"
 #include "models/ReturnLineModel.hpp"
 #include "models/HistoryListModel.hpp"
 #include "models/BillDetailModel.hpp"
+#include "models/HeldCartModel.hpp"
 
 using blissmont::bridge::PosEngineBridge;
 
@@ -245,6 +247,70 @@ TEST(BridgeSmoke, HistoryRecallReprintRoundTrip) {
     bridge.reprintBill(receiptNo);
     ASSERT_TRUE(detailSpy.wait(3000)) << "ReprintBill never produced BillDetail";
     EXPECT_EQ(detailSpy.at(0).at(0).toString(), receiptNo);
+
+    bridge.disconnectFromEngine();
+}
+
+// The suspend/resume shell build (contracts v1.4.0) over real gRPC against a live engine.
+// Build a cart → holdCart echoes the minted id (cartHeld) and the cart clears → listHeldCarts
+// fills the HeldCartModel with the parked draft → resumeCart restores the cart and the engine
+// re-emits CartUpdated with status="held". Exercises the same full-snapshot reset discipline on
+// the bridge's reader thread where tender/returns had race bugs — against the draining engine.
+TEST(BridgeSmoke, SuspendResumeRoundTrip) {
+    const char* target = engineTarget();
+    if (!target) {
+        GTEST_SKIP() << "set BLISSMONT_ENGINE_TARGET to a running engine to run this";
+    }
+    using blissmont::models::HeldCartModel;
+
+    PosEngineBridge bridge;
+    QSignalSpy connSpy(&bridge, &PosEngineBridge::connectionChanged);
+    bridge.connectToEngine(QString::fromUtf8(target));
+    ASSERT_TRUE(connSpy.wait(2000));
+
+    // Build a cart (drain past the initial empty-cart snapshot the engine sends on connect).
+    QSignalSpy cartSpy(bridge.cart(), &QAbstractItemModel::modelReset);
+    bridge.scanItem(QStringLiteral("TESTSKU"));
+    while (bridge.cart()->rowCount() == 0 && cartSpy.wait(2000)) {
+    }
+    ASSERT_GE(bridge.cart()->rowCount(), 1) << "scanned line never arrived in the cart";
+
+    // Suspend it → the engine echoes the minted id (cartHeld) AND clears the live cart.
+    QSignalSpy heldSpy(&bridge, &PosEngineBridge::cartHeld);
+    cartSpy.clear();
+    bridge.holdCart(QStringLiteral("counter 2"));
+    ASSERT_TRUE(heldSpy.wait(3000)) << "holdCart never produced cartHeld";
+    const QString heldId = heldSpy.at(0).at(0).toString();
+    EXPECT_FALSE(heldId.isEmpty()) << "cartHeld carried no id — the minted id was lost";
+    EXPECT_EQ(heldSpy.at(0).at(1).toString(), QStringLiteral("counter 2"));
+    // The cart clears for the next customer (the post-hold empty CartUpdated).
+    while (bridge.cart()->rowCount() > 0 && cartSpy.wait(2000)) {
+    }
+    EXPECT_EQ(bridge.cart()->rowCount(), 0) << "the cart did not clear after the hold";
+
+    // Discover the hold → it lands in the HeldCartModel (full snapshot).
+    QSignalSpy listSpy(&bridge, &PosEngineBridge::heldCartsListed);
+    bridge.listHeldCarts();
+    ASSERT_TRUE(listSpy.wait(3000)) << "listHeldCarts never produced HeldCartsList";
+    ASSERT_GE(bridge.heldCarts()->rowCount(), 1) << "no held carts returned";
+    bool found = false;
+    for (int i = 0; i < bridge.heldCarts()->rowCount(); ++i) {
+        const QString id = bridge.heldCarts()
+                               ->data(bridge.heldCarts()->index(i, 0),
+                                      HeldCartModel::HeldCartIdRole)
+                               .toString();
+        if (id == heldId) { found = true; break; }
+    }
+    EXPECT_TRUE(found) << "the held cart was not among the listed holds";
+
+    // Resume it → the engine restores the cart and re-emits CartUpdated with status="held".
+    cartSpy.clear();
+    bridge.resumeCart(heldId);
+    while (bridge.cart()->rowCount() == 0 && cartSpy.wait(2000)) {
+    }
+    ASSERT_GE(bridge.cart()->rowCount(), 1) << "resume did not restore the cart";
+    EXPECT_EQ(bridge.summary()->status(), QStringLiteral("held"))
+        << "a resumed draft must report status=held";
 
     bridge.disconnectFromEngine();
 }
