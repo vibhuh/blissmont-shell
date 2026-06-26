@@ -8,13 +8,16 @@ import Blissmont.Shell
 Rectangle {
     id: panel
     property string context: "item"
+    // A loaded panel asks the host (BillingScreen) to switch context — e.g. history hands a
+    // recalled bill to the return flow. BillingScreen sets navState from this.
+    signal navigate(string context)
 
     color: Theme.surface
     radius: Theme.radius
     border.color: Theme.border
 
-    // The tender (F6) and return (F9) contexts are real panels; the rest are still
-    // placeholders that swap in here as each context lands.
+    // The tender (F6), return (F9), and history (F11) contexts are real panels; the rest are
+    // still placeholders that swap in here as each context lands.
     Loader {
         anchors.fill: parent
         active: panel.context === "tender"
@@ -29,11 +32,21 @@ Rectangle {
         sourceComponent: ReturnPanel {}
     }
 
+    Loader {
+        anchors.fill: parent
+        active: panel.context === "history"
+        visible: active
+        sourceComponent: HistoryPanel {
+            onNavigateReturn: panel.navigate("return")
+        }
+    }
+
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: Theme.pad
         spacing: Theme.gap
         visible: panel.context !== "tender" && panel.context !== "return"
+                 && panel.context !== "history"
 
         Text {
             text: qsTr("Panel: %1").arg(panel.context)

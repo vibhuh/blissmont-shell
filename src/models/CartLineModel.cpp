@@ -43,10 +43,15 @@ QHash<int, QByteArray> CartLineModel::roleNames() const {
 }
 
 void CartLineModel::reset(const blissmont::terminal::v1::CartUpdated& snapshot) {
+    reset(snapshot.lines());
+}
+
+void CartLineModel::reset(const google::protobuf::RepeatedPtrField<
+                          blissmont::terminal::v1::CartLine>& lines) {
     beginResetModel();
     lines_.clear();
-    lines_.reserve(snapshot.lines_size());
-    for (const auto& l : snapshot.lines()) {
+    lines_.reserve(lines.size());
+    for (const auto& l : lines) {
         Line out;
         out.lineNo = l.line_no();
         out.sku = QString::fromStdString(l.sku());

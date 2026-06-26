@@ -20,9 +20,12 @@ qt_add_library(shell STATIC
   models/CartSummary.cpp            models/CartSummary.hpp
   models/TenderListModel.cpp        models/TenderListModel.hpp
   models/ReturnLineModel.cpp        models/ReturnLineModel.hpp
+  models/HistoryListModel.cpp       models/HistoryListModel.hpp
+  models/BillDetailModel.cpp        models/BillDetailModel.hpp
   viewmodels/BillingViewModel.cpp   viewmodels/BillingViewModel.hpp
   viewmodels/TenderViewModel.cpp    viewmodels/TenderViewModel.hpp
   viewmodels/ReturnViewModel.cpp    viewmodels/ReturnViewModel.hpp
+  viewmodels/HistoryViewModel.cpp   viewmodels/HistoryViewModel.hpp
   services/ConnectionService.cpp    services/ConnectionService.hpp
   services/ConfigService.cpp        services/ConfigService.hpp
 )
@@ -56,6 +59,7 @@ set(SHELL_QML_FILES
   panels/ItemPanel.qml
   panels/TenderPanel.qml
   panels/ReturnPanel.qml
+  panels/HistoryPanel.qml
   components/ScanField.qml
   components/BillTable.qml
   components/StatusLine.qml
@@ -79,6 +83,7 @@ qt_add_qml_module(shell
     ${CMAKE_SOURCE_DIR}/qml/panels/ItemPanel.qml
     ${CMAKE_SOURCE_DIR}/qml/panels/TenderPanel.qml
     ${CMAKE_SOURCE_DIR}/qml/panels/ReturnPanel.qml
+    ${CMAKE_SOURCE_DIR}/qml/panels/HistoryPanel.qml
     ${CMAKE_SOURCE_DIR}/qml/components/ScanField.qml
     ${CMAKE_SOURCE_DIR}/qml/components/BillTable.qml
     ${CMAKE_SOURCE_DIR}/qml/components/StatusLine.qml

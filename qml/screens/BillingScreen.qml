@@ -88,6 +88,8 @@ Item {
                 Layout.preferredWidth: Math.round(screen.width * 0.38)
                 Layout.fillHeight: true
                 context: screen.navState
+                // A panel can request a context switch (e.g. history → return seam).
+                onNavigate: (context) => screen.navState = context
             }
         }
 
