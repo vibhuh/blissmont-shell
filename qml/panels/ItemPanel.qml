@@ -13,10 +13,20 @@ Rectangle {
     radius: Theme.radius
     border.color: Theme.border
 
+    // The tender context (F6) is a real panel; the rest are still placeholders that
+    // swap in here as each context lands.
+    Loader {
+        anchors.fill: parent
+        active: panel.context === "tender"
+        visible: active
+        sourceComponent: TenderPanel {}
+    }
+
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: Theme.pad
         spacing: Theme.gap
+        visible: panel.context !== "tender"
 
         Text {
             text: qsTr("Panel: %1").arg(panel.context)
@@ -25,7 +35,7 @@ Rectangle {
             font.pixelSize: Theme.fontLarge
         }
         Text {
-            text: qsTr("Placeholder — tender, payout, history and return panels swap in here.")
+            text: qsTr("Placeholder — payout, history and return panels swap in here.")
             color: Theme.textMuted
             font.family: Theme.fontFamily
             font.pixelSize: Theme.fontBody

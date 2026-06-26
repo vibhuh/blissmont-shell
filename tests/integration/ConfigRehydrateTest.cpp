@@ -42,6 +42,8 @@ TEST(ConfigRehydrate, ConfigRepopulatesAfterReconnect) {
     bridge.connectToEngine(QString::fromUtf8(target));
     ASSERT_TRUE(configSpy.wait(2000)) << "no ConfigUpdated on initial connect";
     EXPECT_TRUE(config.loaded());
+    // Payment methods (contracts v1.2.0) arrive on the same ConfigUpdated.
+    const QVariantList methodsOnConnect = config.enabledPaymentMethods();
 
     // ── Drop the session. ──
     bridge.disconnectFromEngine();
@@ -52,6 +54,9 @@ TEST(ConfigRehydrate, ConfigRepopulatesAfterReconnect) {
     bridge.connectToEngine(QString::fromUtf8(target));
     EXPECT_TRUE(configSpy.wait(2000)) << "config did not rehydrate after reconnect";
     EXPECT_TRUE(config.loaded());
+    // The payment methods rehydrate identically over the reconnect (same Session path).
+    EXPECT_EQ(config.enabledPaymentMethods(), methodsOnConnect)
+        << "payment methods did not rehydrate to the same set after reconnect";
 
     bridge.disconnectFromEngine();
 }

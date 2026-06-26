@@ -20,6 +20,7 @@
 #include <QObject>
 #include <QQmlEngine>
 #include <QString>
+#include <QVariantList>
 
 namespace blissmont::services {
 
@@ -34,6 +35,11 @@ class ConfigService : public QObject {
     Q_PROPERTY(bool allowDiscounts READ allowDiscounts NOTIFY changed)
     Q_PROPERTY(QString tenderCompleteMode READ tenderCompleteMode NOTIFY changed)
     Q_PROPERTY(QString currencySymbol READ currencySymbol NOTIFY changed)
+    // Enabled tenders for the tender panel, sorted by sortOrder. Each entry is a
+    // QVariantMap {method, displayName, hotkey, sortOrder, enabled, referenceMode}
+    // (contracts v1.2.0). Disabled methods are dropped here — only tenderable
+    // methods reach the UI.
+    Q_PROPERTY(QVariantList enabledPaymentMethods READ enabledPaymentMethods NOTIFY changed)
 
 public:
     explicit ConfigService(QObject* parent = nullptr);
@@ -44,13 +50,17 @@ public:
     [[nodiscard]] bool allowDiscounts() const { return allowDiscounts_; }
     [[nodiscard]] QString tenderCompleteMode() const { return tenderCompleteMode_; }
     [[nodiscard]] QString currencySymbol() const { return currencySymbol_; }
+    [[nodiscard]] QVariantList enabledPaymentMethods() const { return enabledPaymentMethods_; }
 
 public slots:
     // Hydrate from an engine ConfigUpdated event (relayed by PosEngineBridge, wired
     // in QML). Idempotent: re-applying the same values is a no-op; this is what makes
     // reconnect rehydration cheap (the engine re-pushes config on every (re)connect).
+    // paymentMethods is the full device-domain list; this filters to enabled and
+    // sorts by sortOrder before exposing it.
     void applyConfig(bool allowReturns, bool payoutEnabled, bool allowDiscounts,
-                     const QString& tenderCompleteMode, const QString& currencySymbol);
+                     const QString& tenderCompleteMode, const QString& currencySymbol,
+                     const QVariantList& paymentMethods);
 
 signals:
     void changed();
@@ -63,6 +73,7 @@ private:
     bool allowDiscounts_ = true;
     QString tenderCompleteMode_ = QStringLiteral("confirm");
     QString currencySymbol_ = QStringLiteral("₹");  // ₹
+    QVariantList enabledPaymentMethods_;            // enabled-only, sorted by sortOrder
 };
 
 }  // namespace blissmont::services

@@ -24,8 +24,8 @@ ApplicationWindow {
         // Engine relays device config over the Session stream (contracts v1.1.0). The
         // engine re-pushes it on every (re)connect, so ConfigService rehydrates here
         // with no re-sync logic — the same pattern as sync status above.
-        function onConfigUpdated(allowReturns, payoutEnabled, allowDiscounts, tenderCompleteMode, currencySymbol) {
-            ConfigService.applyConfig(allowReturns, payoutEnabled, allowDiscounts, tenderCompleteMode, currencySymbol)
+        function onConfigUpdated(allowReturns, payoutEnabled, allowDiscounts, tenderCompleteMode, currencySymbol, paymentMethods) {
+            ConfigService.applyConfig(allowReturns, payoutEnabled, allowDiscounts, tenderCompleteMode, currencySymbol, paymentMethods)
         }
     }
 
