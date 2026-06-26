@@ -33,11 +33,14 @@ TEST(BridgeSmoke, ScanRoundTripsAndRenders) {
     ASSERT_TRUE(connSpy.wait(2000));
     ASSERT_TRUE(bridge.connected());
 
-    // A row should appear in the cart model after the engine acks the scan with CartUpdated.
+    // The scanned line should land in the cart after the engine acks with CartUpdated.
+    // Drain past the initial empty-cart snapshot the engine sends on connect — a bare wait
+    // can return on that empty reset before the scan's CartUpdated arrives.
     QSignalSpy rowsSpy(bridge.cart(), &QAbstractItemModel::modelReset);
     bridge.scanItem(QStringLiteral("TESTSKU"));
-    EXPECT_TRUE(rowsSpy.wait(2000));
-    EXPECT_GE(bridge.cart()->rowCount(), 0);
+    while (bridge.cart()->rowCount() == 0 && rowsSpy.wait(2000)) {
+    }
+    EXPECT_GE(bridge.cart()->rowCount(), 1) << "scanned line never arrived in the cart";
 }
 
 // The new tender wiring (contracts v1.2.0 shell build): a tender added over real gRPC
