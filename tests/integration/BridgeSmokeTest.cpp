@@ -15,6 +15,8 @@
 #include "models/CartLineModel.hpp"
 #include "models/TenderListModel.hpp"
 #include "models/ReturnLineModel.hpp"
+#include "models/HistoryListModel.hpp"
+#include "models/BillDetailModel.hpp"
 
 using blissmont::bridge::PosEngineBridge;
 
@@ -179,6 +181,70 @@ TEST(BridgeSmoke, ReturnRoundTripProvisionalThenCanonical) {
     }
     EXPECT_TRUE(sawCanonical) << "canonical RefundSettled never arrived (is the engine draining?)";
     EXPECT_FALSE(canonicalRefundNo.isEmpty()) << "canonical refund number missing";
+
+    bridge.disconnectFromEngine();
+}
+
+// The history shell build over real gRPC: sell + settle a bill, then exercise the four
+// local-first reads. RecallRecent fills the HistoryListModel; the settled receipt is among the
+// recent rows; RecallByReceiptNo fills the BillDetailModel with that bill's lines + payments;
+// ReprintBill re-emits BillDetail (the DUPLICATE banner is on the engine's printed bytes, not
+// the event). Requires the dev engine (seeds an OPEN shift on boot) so the bill can settle.
+TEST(BridgeSmoke, HistoryRecallReprintRoundTrip) {
+    const char* target = engineTarget();
+    if (!target) {
+        GTEST_SKIP() << "set BLISSMONT_ENGINE_TARGET to a running engine to run this";
+    }
+    using blissmont::models::HistoryListModel;
+
+    PosEngineBridge bridge;
+    QSignalSpy connSpy(&bridge, &PosEngineBridge::connectionChanged);
+    bridge.connectToEngine(QString::fromUtf8(target));
+    ASSERT_TRUE(connSpy.wait(2000));
+
+    // Sell one line, tender the balance, and settle; capture the receipt.
+    QSignalSpy cartSpy(bridge.cart(), &QAbstractItemModel::modelReset);
+    bridge.scanItem(QStringLiteral("TESTSKU"));
+    while (bridge.cart()->rowCount() == 0 && cartSpy.wait(2000)) {
+    }
+    ASSERT_GE(bridge.cart()->rowCount(), 1) << "scanned line never arrived in the cart";
+    QSignalSpy settledSpy(&bridge, &PosEngineBridge::orderSettled);
+    bridge.addTender(QStringLiteral("cash"), bridge.summary()->balanceDue(), QString());
+    bridge.settle();
+    ASSERT_TRUE(settledSpy.wait(3000)) << "settle never produced OrderSettled (shift open?)";
+    const QString receiptNo = settledSpy.at(0).at(0).toString();
+    ASSERT_FALSE(receiptNo.isEmpty());
+
+    // RecallRecent → the recent bills land in the history model, including our settled bill.
+    QSignalSpy historySpy(&bridge, &PosEngineBridge::historyResults);
+    bridge.recallRecent(20);
+    ASSERT_TRUE(historySpy.wait(3000)) << "RecallRecent never produced HistoryResults";
+    ASSERT_GE(bridge.history()->rowCount(), 1) << "no recent bills returned";
+    bool found = false;
+    for (int i = 0; i < bridge.history()->rowCount(); ++i) {
+        const QString r = bridge.history()
+                              ->data(bridge.history()->index(i, 0),
+                                     HistoryListModel::ReceiptNoRole)
+                              .toString();
+        if (r == receiptNo) { found = true; break; }
+    }
+    EXPECT_TRUE(found) << "the settled receipt was not among the recent bills";
+
+    // RecallByReceiptNo → the bill's detail (lines + payments) lands in the detail model.
+    QSignalSpy detailSpy(&bridge, &PosEngineBridge::billDetailLoaded);
+    bridge.recallByReceiptNo(receiptNo);
+    ASSERT_TRUE(detailSpy.wait(3000)) << "RecallByReceiptNo never produced BillDetail";
+    EXPECT_EQ(detailSpy.at(0).at(0).toString(), receiptNo);
+    EXPECT_TRUE(bridge.billDetail()->active());
+    EXPECT_EQ(bridge.billDetail()->receiptNo(), receiptNo);
+    EXPECT_GE(bridge.billDetail()->lines()->rowCount(), 1) << "recalled bill has no lines";
+    EXPECT_GE(bridge.billDetail()->payments()->rowCount(), 1) << "recalled bill has no payments";
+
+    // ReprintBill → the engine re-emits BillDetail (and prints a DUPLICATE receipt).
+    detailSpy.clear();
+    bridge.reprintBill(receiptNo);
+    ASSERT_TRUE(detailSpy.wait(3000)) << "ReprintBill never produced BillDetail";
+    EXPECT_EQ(detailSpy.at(0).at(0).toString(), receiptNo);
 
     bridge.disconnectFromEngine();
 }

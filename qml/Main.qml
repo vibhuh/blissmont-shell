@@ -37,7 +37,7 @@ ApplicationWindow {
 
     // ── Frozen keymap (UX §1). Skeleton: nav keys live; others are placeholders. ─
     Shortcut { sequences: ["F12"]; onActivated: billing.focusScan() }       // scan-is-home
-    Shortcut { sequences: ["F3"];  onActivated: billing.navState = "history" }
+    Shortcut { sequences: ["F11"]; onActivated: billing.navState = "history" }
     Shortcut { sequences: ["F6"];  onActivated: billing.navState = "tender" }
     Shortcut { sequences: ["F7"];  onActivated: billing.navState = "payout" }
     Shortcut { sequences: ["F9"];  onActivated: billing.navState = "return" }

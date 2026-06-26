@@ -10,6 +10,8 @@
 #include <QList>
 #include <QString>
 
+#include <google/protobuf/repeated_ptr_field.h>
+
 #include "terminal/v1/terminal.pb.h"
 
 namespace blissmont::models {
@@ -32,6 +34,10 @@ public:
 
     // Replace all rows from a fresh engine snapshot.
     void reset(const blissmont::terminal::v1::CartUpdated& snapshot);
+    // Replace all rows from a bare repeated Tender field (e.g. BillDetail.payments for a
+    // recalled bill). The CartUpdated overload delegates here — same row shape, two sources.
+    void reset(const google::protobuf::RepeatedPtrField<
+               blissmont::terminal::v1::Tender>& tenders);
 
 private:
     struct Tender {

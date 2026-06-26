@@ -25,6 +25,8 @@
 #include "models/CartSummary.hpp"
 #include "models/TenderListModel.hpp"
 #include "models/ReturnLineModel.hpp"
+#include "models/HistoryListModel.hpp"
+#include "models/BillDetailModel.hpp"
 
 namespace blissmont::bridge {
 
@@ -37,6 +39,8 @@ class PosEngineBridge : public QObject {
     Q_PROPERTY(blissmont::models::CartSummary* summary READ summary CONSTANT)
     Q_PROPERTY(blissmont::models::TenderListModel* tenders READ tenders CONSTANT)
     Q_PROPERTY(blissmont::models::ReturnLineModel* returnLines READ returnLines CONSTANT)
+    Q_PROPERTY(blissmont::models::HistoryListModel* history READ history CONSTANT)
+    Q_PROPERTY(blissmont::models::BillDetailModel* billDetail READ billDetail CONSTANT)
     Q_PROPERTY(bool connected READ connected NOTIFY connectionChanged)
 
 public:
@@ -47,6 +51,8 @@ public:
     [[nodiscard]] blissmont::models::CartSummary* summary() const { return summary_; }
     [[nodiscard]] blissmont::models::TenderListModel* tenders() const { return tenders_; }
     [[nodiscard]] blissmont::models::ReturnLineModel* returnLines() const { return returnLines_; }
+    [[nodiscard]] blissmont::models::HistoryListModel* history() const { return history_; }
+    [[nodiscard]] blissmont::models::BillDetailModel* billDetail() const { return billDetail_; }
     [[nodiscard]] bool connected() const { return connected_.load(std::memory_order_relaxed); }
 
     // ── UI -> engine (one per Command oneof; thin: build + write) ─────────────
@@ -70,6 +76,13 @@ public:
     // refundMethod is the cashier's choice ("original" | "cash") under
     // refund_tender_mode="both"; empty for original/cash modes (engine resolves).
     Q_INVOKABLE void commitReturn(const QString& refundMethod = QString());
+    // History (UX §10) — all local-first reads. recallRecent / searchByCustomer fill the
+    // history model; recallByReceiptNo / reprintBill fill the billDetail model (reprint also
+    // marks DUPLICATE engine-side on the printed receipt).
+    Q_INVOKABLE void recallRecent(int limit);
+    Q_INVOKABLE void recallByReceiptNo(const QString& receiptNo);
+    Q_INVOKABLE void searchByCustomer(const QString& query);
+    Q_INVOKABLE void reprintBill(const QString& receiptNo);
     Q_INVOKABLE void runEod();
 
 signals:
@@ -108,7 +121,15 @@ signals:
     // key with returnCommitted — see the two-event lifecycle in the build brief; the
     // shell uses it for display status only, never to gate print/navigation.
     void refundSettled(const QString& refundNo, bool provisional, const QString& total);
+    // A fresh recent/search result set has landed in the history model (full snapshot). The
+    // row payload is the model; this is the "results changed" notify.
     void historyResults();
+    // A recalled / reprinted bill's detail has landed in the billDetail model (full snapshot).
+    // Carries the receipt for the panel title; fires for BOTH recallByReceiptNo (view) and
+    // reprintBill (the engine re-emits BillDetail after printing) — the event carries no
+    // duplicate flag, so the two are distinguished by the caller's intent, not the payload.
+    // Named *Loaded to avoid clashing with the billDetail() property getter.
+    void billDetailLoaded(const QString& receiptNo);
 
 private:
     using Command = blissmont::terminal::v1::Command;
@@ -124,6 +145,8 @@ private:
     blissmont::models::CartSummary* summary_;
     blissmont::models::TenderListModel* tenders_;
     blissmont::models::ReturnLineModel* returnLines_;
+    blissmont::models::HistoryListModel* history_;
+    blissmont::models::BillDetailModel* billDetail_;
 
     std::shared_ptr<grpc::Channel> channel_;
     std::unique_ptr<blissmont::terminal::v1::TerminalEngine::Stub> stub_;

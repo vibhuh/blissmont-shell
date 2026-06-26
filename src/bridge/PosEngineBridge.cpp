@@ -13,7 +13,9 @@ PosEngineBridge::PosEngineBridge(QObject* parent)
       cart_(new blissmont::models::CartLineModel(this)),
       summary_(new blissmont::models::CartSummary(this)),
       tenders_(new blissmont::models::TenderListModel(this)),
-      returnLines_(new blissmont::models::ReturnLineModel(this)) {}
+      returnLines_(new blissmont::models::ReturnLineModel(this)),
+      history_(new blissmont::models::HistoryListModel(this)),
+      billDetail_(new blissmont::models::BillDetailModel(this)) {}
 
 PosEngineBridge::~PosEngineBridge() { disconnectFromEngine(); }
 
@@ -166,7 +168,16 @@ void PosEngineBridge::applyEvent(const Event& evt) {
                                QString::fromStdString(evt.refund_settled().total_str()));
             break;
         case E::kHistoryResults:
+            // Full-snapshot reset of the recent/search rows (same discipline as the cart),
+            // then notify — the row payload IS the model, never a bare signal.
+            history_->reset(evt.history_results());
             emit historyResults();
+            break;
+        case E::kBillDetail:
+            // Recall (view) or reprint source — fill the detail model wholesale, then notify
+            // with the receipt for the panel title.
+            billDetail_->reset(evt.bill_detail());
+            emit billDetailLoaded(QString::fromStdString(evt.bill_detail().receipt_no()));
             break;
         default:
             break;  // events filled in as panels land
@@ -282,6 +293,30 @@ void PosEngineBridge::setReturnLineQty(int originalLineNo, const QString& qty, b
 void PosEngineBridge::commitReturn(const QString& refundMethod) {
     Command cmd;
     cmd.mutable_commit_return()->set_refund_method(refundMethod.toStdString());
+    writeCommand(std::move(cmd));
+}
+
+void PosEngineBridge::recallRecent(int limit) {
+    Command cmd;
+    cmd.mutable_recall_recent()->set_limit(limit);
+    writeCommand(std::move(cmd));
+}
+
+void PosEngineBridge::recallByReceiptNo(const QString& receiptNo) {
+    Command cmd;
+    cmd.mutable_recall_by_receipt_no()->set_receipt_no(receiptNo.toStdString());
+    writeCommand(std::move(cmd));
+}
+
+void PosEngineBridge::searchByCustomer(const QString& query) {
+    Command cmd;
+    cmd.mutable_search_by_customer()->set_query(query.toStdString());
+    writeCommand(std::move(cmd));
+}
+
+void PosEngineBridge::reprintBill(const QString& receiptNo) {
+    Command cmd;
+    cmd.mutable_reprint_bill()->set_receipt_no(receiptNo.toStdString());
     writeCommand(std::move(cmd));
 }
 

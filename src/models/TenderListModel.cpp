@@ -31,10 +31,15 @@ QHash<int, QByteArray> TenderListModel::roleNames() const {
 }
 
 void TenderListModel::reset(const blissmont::terminal::v1::CartUpdated& snapshot) {
+    reset(snapshot.tenders());
+}
+
+void TenderListModel::reset(const google::protobuf::RepeatedPtrField<
+                            blissmont::terminal::v1::Tender>& tenders) {
     beginResetModel();
     tenders_.clear();
-    tenders_.reserve(snapshot.tenders_size());
-    for (const auto& t : snapshot.tenders()) {
+    tenders_.reserve(tenders.size());
+    for (const auto& t : tenders) {
         Tender out;
         out.tenderNo = t.tender_no();
         out.method = QString::fromStdString(t.method());
