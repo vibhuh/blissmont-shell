@@ -14,6 +14,7 @@
 #include "bridge/PosEngineBridge.hpp"
 #include "models/CartLineModel.hpp"
 #include "models/TenderListModel.hpp"
+#include "models/ReturnLineModel.hpp"
 
 using blissmont::bridge::PosEngineBridge;
 
@@ -88,6 +89,71 @@ TEST(BridgeSmoke, TenderAddAndRemoveRoundTrip) {
     bridge.removeTender(tenderNo);
     ASSERT_TRUE(tendersSpy.wait(2000));
     EXPECT_EQ(bridge.tenders()->rowCount(), 0);
+
+    bridge.disconnectFromEngine();
+}
+
+// The returns shell build: drive a full return over real gRPC against a live engine.
+// Requires the dev engine (cmd/blissmont-engine), which seeds an OPEN shift on boot, so
+// the bridge's session hydrates it and can settle + commit a return. Sell a line → settle
+// (capture the receipt) → StartReturn → the returnable lines land in ReturnLineModel →
+// SetReturnLineQty re-emits the context → CommitReturn → a provisional ReturnCommitted with
+// a credit-note number. The canonical RefundSettled is produced by the syncer's outbox drain
+// (the dev engine does not drain), so the provisional commit is the round-trip asserted here.
+TEST(BridgeSmoke, ReturnRoundTripIssuesProvisionalCreditNote) {
+    const char* target = engineTarget();
+    if (!target) {
+        GTEST_SKIP() << "set BLISSMONT_ENGINE_TARGET to a running engine to run this";
+    }
+    using blissmont::models::ReturnLineModel;
+
+    PosEngineBridge bridge;
+    QSignalSpy connSpy(&bridge, &PosEngineBridge::connectionChanged);
+    bridge.connectToEngine(QString::fromUtf8(target));
+    ASSERT_TRUE(connSpy.wait(2000));
+
+    // Sell one line (drain past the initial empty-cart snapshot first).
+    QSignalSpy cartSpy(bridge.cart(), &QAbstractItemModel::modelReset);
+    bridge.scanItem(QStringLiteral("TESTSKU"));
+    while (bridge.cart()->rowCount() == 0 && cartSpy.wait(2000)) {
+    }
+    ASSERT_GE(bridge.cart()->rowCount(), 1) << "scanned line never arrived in the cart";
+
+    // Tender the full balance and settle; capture the provisional receipt number.
+    QSignalSpy settledSpy(&bridge, &PosEngineBridge::orderSettled);
+    bridge.addTender(QStringLiteral("cash"), bridge.summary()->balanceDue(), QString());
+    bridge.settle();
+    ASSERT_TRUE(settledSpy.wait(3000)) << "settle never produced OrderSettled (shift open?)";
+    const QString receiptNo = settledSpy.at(0).at(0).toString();
+    ASSERT_FALSE(receiptNo.isEmpty());
+
+    // StartReturn → the original bill's returnable lines land in the model.
+    QSignalSpy ctxSpy(&bridge, &PosEngineBridge::returnContextLoaded);
+    QSignalSpy returnLinesSpy(bridge.returnLines(), &QAbstractItemModel::modelReset);
+    bridge.startReturn(receiptNo, /*blind=*/false);
+    ASSERT_TRUE(ctxSpy.wait(3000)) << "StartReturn never produced ReturnContextLoaded";
+    EXPECT_EQ(ctxSpy.at(0).at(0).toString(), receiptNo);
+    ASSERT_GE(bridge.returnLines()->rowCount(), 1) << "no returnable lines loaded";
+
+    const int lineNo =
+        bridge.returnLines()
+            ->data(bridge.returnLines()->index(0, 0), ReturnLineModel::OriginalLineNoRole)
+            .toInt();
+
+    // SetReturnLineQty re-emits ReturnContextLoaded — the model resets again.
+    returnLinesSpy.clear();
+    bridge.setReturnLineQty(lineNo, QStringLiteral("1"), /*restock=*/true);
+    ASSERT_TRUE(returnLinesSpy.wait(2000)) << "SetReturnLineQty did not re-emit the context";
+    ASSERT_GE(bridge.returnLines()->rowCount(), 1);
+
+    // CommitReturn → a provisional credit note, and the model clears.
+    QSignalSpy committedSpy(&bridge, &PosEngineBridge::returnCommitted);
+    bridge.commitReturn();
+    ASSERT_TRUE(committedSpy.wait(3000)) << "CommitReturn never produced ReturnCommitted";
+    const QString creditNoteNo = committedSpy.at(0).at(0).toString();
+    const bool provisional = committedSpy.at(0).at(1).toBool();
+    EXPECT_FALSE(creditNoteNo.isEmpty()) << "credit note number missing";
+    EXPECT_TRUE(provisional) << "offline commit should be provisional until sync";
 
     bridge.disconnectFromEngine();
 }

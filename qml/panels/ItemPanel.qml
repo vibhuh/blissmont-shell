@@ -13,8 +13,8 @@ Rectangle {
     radius: Theme.radius
     border.color: Theme.border
 
-    // The tender context (F6) is a real panel; the rest are still placeholders that
-    // swap in here as each context lands.
+    // The tender (F6) and return (F9) contexts are real panels; the rest are still
+    // placeholders that swap in here as each context lands.
     Loader {
         anchors.fill: parent
         active: panel.context === "tender"
@@ -22,11 +22,18 @@ Rectangle {
         sourceComponent: TenderPanel {}
     }
 
+    Loader {
+        anchors.fill: parent
+        active: panel.context === "return"
+        visible: active
+        sourceComponent: ReturnPanel {}
+    }
+
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: Theme.pad
         spacing: Theme.gap
-        visible: panel.context !== "tender"
+        visible: panel.context !== "tender" && panel.context !== "return"
 
         Text {
             text: qsTr("Panel: %1").arg(panel.context)
