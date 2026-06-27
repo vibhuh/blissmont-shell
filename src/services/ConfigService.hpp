@@ -20,6 +20,7 @@
 #include <QObject>
 #include <QQmlEngine>
 #include <QString>
+#include <QStringList>
 #include <QVariantList>
 
 namespace blissmont::services {
@@ -40,6 +41,11 @@ class ConfigService : public QObject {
     // (contracts v1.2.0). Disabled methods are dropped here — only tenderable
     // methods reach the UI.
     Q_PROPERTY(QVariantList enabledPaymentMethods READ enabledPaymentMethods NOTIFY changed)
+    // Payout category KEYS for the payout panel's pick-list (contracts terminal.v1
+    // TerminalConfig.payout_categories). Only the keys ride the device snapshot — the
+    // category→GL-account mapping (pos.v1.PayoutCategory.gl_account) stays server-side.
+    // A payout REQUIRES one of these, so the panel selects from this list.
+    Q_PROPERTY(QStringList payoutCategories READ payoutCategories NOTIFY changed)
     // ── Returns policy (UX §9) — display/gate hints; the engine enforces each one ──
     Q_PROPERTY(bool allowBlindReturn READ allowBlindReturn NOTIFY changed)
     Q_PROPERTY(QString refundTenderMode READ refundTenderMode NOTIFY changed)     // original|cash|both
@@ -60,6 +66,7 @@ public:
     [[nodiscard]] QString tenderCompleteMode() const { return tenderCompleteMode_; }
     [[nodiscard]] QString currencySymbol() const { return currencySymbol_; }
     [[nodiscard]] QVariantList enabledPaymentMethods() const { return enabledPaymentMethods_; }
+    [[nodiscard]] QStringList payoutCategories() const { return payoutCategories_; }
     [[nodiscard]] bool allowBlindReturn() const { return allowBlindReturn_; }
     [[nodiscard]] QString refundTenderMode() const { return refundTenderMode_; }
     [[nodiscard]] QString returnRequiresAuth() const { return returnRequiresAuth_; }
@@ -80,7 +87,8 @@ public slots:
                      const QString& refundTenderMode = QStringLiteral("cash"),
                      const QString& returnRequiresAuth = QStringLiteral("never"),
                      bool restockDefault = false, bool allowPartialReturn = false,
-                     const QString& heldCartExpiry = QString());
+                     const QString& heldCartExpiry = QString(),
+                     const QStringList& payoutCategories = QStringList());
 
 signals:
     void changed();
@@ -94,6 +102,7 @@ private:
     QString tenderCompleteMode_ = QStringLiteral("confirm");
     QString currencySymbol_ = QStringLiteral("₹");  // ₹
     QVariantList enabledPaymentMethods_;            // enabled-only, sorted by sortOrder
+    QStringList payoutCategories_;                  // payout category keys (display = key)
     bool allowBlindReturn_ = false;
     QString refundTenderMode_ = QStringLiteral("cash");
     QString returnRequiresAuth_ = QStringLiteral("never");

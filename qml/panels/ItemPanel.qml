@@ -48,12 +48,20 @@ Rectangle {
         sourceComponent: SuspendPanel {}
     }
 
+    Loader {
+        anchors.fill: parent
+        active: panel.context === "payout"
+        visible: active
+        sourceComponent: PayoutPanel {}
+    }
+
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: Theme.pad
         spacing: Theme.gap
         visible: panel.context !== "tender" && panel.context !== "return"
                  && panel.context !== "history" && panel.context !== "suspend"
+                 && panel.context !== "payout"
 
         Text {
             text: qsTr("Panel: %1").arg(panel.context)
@@ -62,7 +70,7 @@ Rectangle {
             font.pixelSize: Theme.fontLarge
         }
         Text {
-            text: qsTr("Placeholder — payout, history and return panels swap in here.")
+            text: qsTr("Placeholder — context panels swap in here.")
             color: Theme.textMuted
             font.family: Theme.fontFamily
             font.pixelSize: Theme.fontBody

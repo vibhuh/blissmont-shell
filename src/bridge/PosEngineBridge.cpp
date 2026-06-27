@@ -130,6 +130,12 @@ void PosEngineBridge::applyEvent(const Event& evt) {
                 row[QStringLiteral("referenceMode")] = QString::fromStdString(pm.reference_mode());
                 paymentMethods.push_back(row);
             }
+            // Payout category KEYS only (the category→GL mapping stays server-side).
+            QStringList payoutCategories;
+            payoutCategories.reserve(cfg.payout_categories_size());
+            for (const auto& key : cfg.payout_categories()) {
+                payoutCategories.push_back(QString::fromStdString(key));
+            }
             emit configUpdated(cfg.allow_returns(), cfg.payout_enabled(),
                                cfg.allow_discounts(),
                                QString::fromStdString(cfg.tender_complete_mode()),
@@ -140,9 +146,17 @@ void PosEngineBridge::applyEvent(const Event& evt) {
                                QString::fromStdString(cfg.return_requires_auth()),
                                cfg.restock_default(),
                                cfg.allow_partial_return(),
-                               QString::fromStdString(cfg.held_cart_expiry()));
+                               QString::fromStdString(cfg.held_cart_expiry()),
+                               payoutCategories);
             break;
         }
+        case E::kPayoutRecorded:
+            // The engine echoes the recorded payout (UX §12) — surface it as the
+            // confirmation. Display only; the engine/server own the GL posting.
+            emit payoutRecorded(QString::fromStdString(evt.payout_recorded().payout_id()),
+                                QString::fromStdString(evt.payout_recorded().amount_str()),
+                                QString::fromStdString(evt.payout_recorded().category()));
+            break;
         case E::kAuthRequired:
             emit authRequired(QString::fromStdString(evt.auth_required().action()),
                               QString::fromStdString(evt.auth_required().reason()));

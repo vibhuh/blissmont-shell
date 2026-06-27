@@ -28,6 +28,7 @@ qt_add_library(shell STATIC
   viewmodels/ReturnViewModel.cpp    viewmodels/ReturnViewModel.hpp
   viewmodels/HistoryViewModel.cpp   viewmodels/HistoryViewModel.hpp
   viewmodels/SuspendResumeViewModel.cpp  viewmodels/SuspendResumeViewModel.hpp
+  viewmodels/PayoutViewModel.cpp    viewmodels/PayoutViewModel.hpp
   services/ConnectionService.cpp    services/ConnectionService.hpp
   services/ConfigService.cpp        services/ConfigService.hpp
 )
@@ -63,6 +64,7 @@ set(SHELL_QML_FILES
   panels/ReturnPanel.qml
   panels/HistoryPanel.qml
   panels/SuspendPanel.qml
+  panels/PayoutPanel.qml
   components/ScanField.qml
   components/BillTable.qml
   components/StatusLine.qml
@@ -88,6 +90,7 @@ qt_add_qml_module(shell
     ${CMAKE_SOURCE_DIR}/qml/panels/ReturnPanel.qml
     ${CMAKE_SOURCE_DIR}/qml/panels/HistoryPanel.qml
     ${CMAKE_SOURCE_DIR}/qml/panels/SuspendPanel.qml
+    ${CMAKE_SOURCE_DIR}/qml/panels/PayoutPanel.qml
     ${CMAKE_SOURCE_DIR}/qml/components/ScanField.qml
     ${CMAKE_SOURCE_DIR}/qml/components/BillTable.qml
     ${CMAKE_SOURCE_DIR}/qml/components/StatusLine.qml
