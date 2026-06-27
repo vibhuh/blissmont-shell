@@ -32,11 +32,13 @@ void ConfigService::applyConfig(bool allowReturns, bool payoutEnabled, bool allo
                                 const QVariantList& paymentMethods, bool allowBlindReturn,
                                 const QString& refundTenderMode, const QString& returnRequiresAuth,
                                 bool restockDefault, bool allowPartialReturn,
-                                const QString& heldCartExpiry) {
+                                const QString& heldCartExpiry,
+                                const QStringList& payoutCategories) {
     const QVariantList methods = enabledSorted(paymentMethods);
     if (loaded_ && allowReturns_ == allowReturns && payoutEnabled_ == payoutEnabled &&
         allowDiscounts_ == allowDiscounts && tenderCompleteMode_ == tenderCompleteMode &&
         currencySymbol_ == currencySymbol && enabledPaymentMethods_ == methods &&
+        payoutCategories_ == payoutCategories &&
         allowBlindReturn_ == allowBlindReturn && refundTenderMode_ == refundTenderMode &&
         returnRequiresAuth_ == returnRequiresAuth && restockDefault_ == restockDefault &&
         allowPartialReturn_ == allowPartialReturn && heldCartExpiry_ == heldCartExpiry) {
@@ -49,6 +51,7 @@ void ConfigService::applyConfig(bool allowReturns, bool payoutEnabled, bool allo
     tenderCompleteMode_ = tenderCompleteMode;
     currencySymbol_ = currencySymbol;
     enabledPaymentMethods_ = methods;
+    payoutCategories_ = payoutCategories;
     allowBlindReturn_ = allowBlindReturn;
     refundTenderMode_ = refundTenderMode;
     returnRequiresAuth_ = returnRequiresAuth;

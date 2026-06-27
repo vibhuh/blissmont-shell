@@ -25,9 +25,11 @@ ApplicationWindow {
         // engine re-pushes it on every (re)connect, so ConfigService rehydrates here
         // with no re-sync logic — the same pattern as sync status above.
         function onConfigUpdated(allowReturns, payoutEnabled, allowDiscounts, tenderCompleteMode, currencySymbol, paymentMethods,
-                                 allowBlindReturn, refundTenderMode, returnRequiresAuth, restockDefault, allowPartialReturn, heldCartExpiry) {
+                                 allowBlindReturn, refundTenderMode, returnRequiresAuth, restockDefault, allowPartialReturn, heldCartExpiry,
+                                 payoutCategories) {
             ConfigService.applyConfig(allowReturns, payoutEnabled, allowDiscounts, tenderCompleteMode, currencySymbol, paymentMethods,
-                                      allowBlindReturn, refundTenderMode, returnRequiresAuth, restockDefault, allowPartialReturn, heldCartExpiry)
+                                      allowBlindReturn, refundTenderMode, returnRequiresAuth, restockDefault, allowPartialReturn, heldCartExpiry,
+                                      payoutCategories)
         }
     }
 
@@ -41,7 +43,9 @@ ApplicationWindow {
     Shortcut { sequences: ["F6"];     onActivated: billing.navState = "tender" }
     Shortcut { sequences: ["F7"];     onActivated: billing.navState = "suspend" }  // UX §1: F7 = Suspend
     Shortcut { sequences: ["F9"];     onActivated: billing.navState = "return" }
-    Shortcut { sequences: ["Ctrl+O"]; onActivated: billing.navState = "payout" }    // UX §1: Ctrl+O = Payout
+    // UX §1: Ctrl+O = Payout — gated on payout_enabled (the server resolves the flag; the
+    // engine relays it via ConfigService). When disabled, the keystroke is inert.
+    Shortcut { sequences: ["Ctrl+O"]; onActivated: if (ConfigService.payoutEnabled) billing.navState = "payout" }
     Shortcut { sequences: ["Esc"];    onActivated: billing.navState = "item" }
 
     BillingScreen {

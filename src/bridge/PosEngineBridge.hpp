@@ -11,6 +11,7 @@
 #include <QObject>
 #include <QQmlEngine>
 #include <QString>
+#include <QStringList>
 #include <QThread>
 #include <QMutex>
 #include <QVariantList>
@@ -117,8 +118,14 @@ signals:
                        const QVariantList& paymentMethods,
                        bool allowBlindReturn, const QString& refundTenderMode,
                        const QString& returnRequiresAuth, bool restockDefault,
-                       bool allowPartialReturn, const QString& heldCartExpiry);
+                       bool allowPartialReturn, const QString& heldCartExpiry,
+                       const QStringList& payoutCategories);
     void authRequired(const QString& action, const QString& reason);
+    // A payout was recorded (UX §12): the engine echoes the provisional/local payout id,
+    // amount and category after RecordPayout. The shell surfaces this as the payout
+    // confirmation — display only; the engine + server own the GL posting. The amount is
+    // exactly what the engine accepted (never re-keyed here).
+    void payoutRecorded(const QString& payoutId, const QString& amount, const QString& category);
     // The original bill's returnable lines have landed in returnLines (full snapshot).
     // Carries the original receipt for the panel title; the line payload is the model.
     void returnContextLoaded(const QString& originalReceiptNo);

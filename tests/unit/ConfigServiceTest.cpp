@@ -7,6 +7,7 @@
 #include <gtest/gtest.h>
 
 #include <QSignalSpy>
+#include <QStringList>
 #include <QVariantList>
 #include <QVariantMap>
 
@@ -109,4 +110,37 @@ TEST(ConfigService, ReapplyingSamePaymentMethodsIsIdempotent) {
     cfg.applyConfig(true, true, true, QStringLiteral("confirm"), QStringLiteral("Rs"), changed);
     EXPECT_EQ(spy.count(), 1);
     EXPECT_EQ(cfg.enabledPaymentMethods().size(), 1);
+}
+
+// ── Payout categories (terminal.v1 TerminalConfig.payout_categories) ──────────
+
+TEST(ConfigService, ProjectsPayoutCategoryKeys) {
+    ConfigService cfg;
+    const QStringList cats{QStringLiteral("supplier"), QStringLiteral("petty_cash"),
+                           QStringLiteral("drop_to_safe")};
+    cfg.applyConfig(true, true, true, QStringLiteral("confirm"), QStringLiteral("Rs"), {},
+                    false, QStringLiteral("cash"), QStringLiteral("never"), false, false,
+                    QString(), cats);
+    EXPECT_EQ(cfg.payoutCategories(), cats);  // keys ride through verbatim, order preserved
+}
+
+TEST(ConfigService, ReapplyingSamePayoutCategoriesIsIdempotent) {
+    ConfigService cfg;
+    const QStringList cats{QStringLiteral("supplier"), QStringLiteral("owner_draw")};
+    cfg.applyConfig(true, true, true, QStringLiteral("confirm"), QStringLiteral("Rs"), {},
+                    false, QStringLiteral("cash"), QStringLiteral("never"), false, false,
+                    QString(), cats);
+
+    QSignalSpy spy(&cfg, &ConfigService::changed);
+    cfg.applyConfig(true, true, true, QStringLiteral("confirm"), QStringLiteral("Rs"), {},
+                    false, QStringLiteral("cash"), QStringLiteral("never"), false, false,
+                    QString(), cats);
+    EXPECT_EQ(spy.count(), 0);  // unchanged categories -> no churn
+
+    // A change in the categories alone must notify.
+    cfg.applyConfig(true, true, true, QStringLiteral("confirm"), QStringLiteral("Rs"), {},
+                    false, QStringLiteral("cash"), QStringLiteral("never"), false, false,
+                    QString(), QStringList{QStringLiteral("supplier")});
+    EXPECT_EQ(spy.count(), 1);
+    EXPECT_EQ(cfg.payoutCategories(), (QStringList{QStringLiteral("supplier")}));
 }
