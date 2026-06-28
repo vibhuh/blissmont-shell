@@ -29,6 +29,8 @@ public:
         TaxRateRole,
         TaxAmountRole,
         LineTotalRole,
+        HsnRole,
+        DiscountEligibleRole,
     };
 
     explicit CartLineModel(QObject* parent = nullptr);
@@ -56,6 +58,8 @@ private:
         QString taxRate;
         QString taxAmount;
         QString lineTotal;
+        QString hsn;
+        bool discountEligible = false;
     };
     QList<Line> lines_;
 };

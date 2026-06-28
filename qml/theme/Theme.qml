@@ -9,6 +9,13 @@ QtObject {
     readonly property int gap: 16
     readonly property int pad: 16
     readonly property int radius: 6
+    readonly property int radiusSmall: 4
+
+    // Interaction sizing.
+    readonly property int touchMin: 64   // grid quick-key minimum touch target (spec §quick-keys)
+    readonly property int actionButton: 56 // bottom action-bar uniform button edge
+    readonly property int iconButton: 32  // inline icon control (scope toggle, list/grid toggle)
+    readonly property int chipHeight: 30  // category chip
 
     // Color tokens.
     readonly property color bg: "#0f1115"
@@ -25,6 +32,7 @@ QtObject {
     // Typography — IBM Plex (spec §2); system fallback if unavailable.
     readonly property string fontFamily: "IBM Plex Sans"
     readonly property string monoFamily: "IBM Plex Mono"
+    readonly property int fontSmall: 12   // sublines (HSN·GST%), chips, secondary labels
     readonly property int fontBody: 14
     readonly property int fontLarge: 20
     readonly property int fontTotal: 28

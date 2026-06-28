@@ -243,6 +243,14 @@ void PosEngineBridge::setLineDiscount(int lineNo, const QString& discount) {
     writeCommand(std::move(cmd));
 }
 
+void PosEngineBridge::setPriceOverride(int lineNo, const QString& price) {
+    Command cmd;
+    auto* m = cmd.mutable_set_price_override();
+    m->set_line_no(lineNo);
+    m->set_price_str(price.toStdString());
+    writeCommand(std::move(cmd));
+}
+
 void PosEngineBridge::removeLine(int lineNo) {
     Command cmd;
     cmd.mutable_remove_line()->set_line_no(lineNo);
@@ -252,6 +260,12 @@ void PosEngineBridge::removeLine(int lineNo) {
 void PosEngineBridge::setOrderDiscount(const QString& discount) {
     Command cmd;
     cmd.mutable_set_order_discount()->set_discount_str(discount.toStdString());
+    writeCommand(std::move(cmd));
+}
+
+void PosEngineBridge::selectCustomer(const QString& posCustomerId) {
+    Command cmd;
+    cmd.mutable_select_customer()->set_pos_customer_id(posCustomerId.toStdString());
     writeCommand(std::move(cmd));
 }
 

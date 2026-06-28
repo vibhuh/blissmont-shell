@@ -15,6 +15,14 @@ void CartSummary::update(const blissmont::terminal::v1::CartUpdated& s) {
     changeDue_ = QString::fromStdString(s.change_due_str());
     customerLabel_ = QString::fromStdString(s.customer_label());
     status_ = QString::fromStdString(s.status());
+    taxableValue_ = QString::fromStdString(s.taxable_value_str());
+    cgst_ = QString::fromStdString(s.cgst_str());
+    sgst_ = QString::fromStdString(s.sgst_str());
+    igst_ = QString::fromStdString(s.igst_str());
+    roundOff_ = QString::fromStdString(s.round_off_str());
+    taxInterstate_ = s.tax_interstate();
+    itemCount_ = s.item_count();
+    unitCount_ = QString::fromStdString(s.unit_count_str());
     emit changed();
 }
 

@@ -60,6 +60,9 @@ set(SHELL_QML_FILES
   Main.qml
   screens/BillingScreen.qml
   panels/ItemPanel.qml
+  panels/ProductSearchPanel.qml
+  panels/BillDiscountPanel.qml
+  panels/CustomerSearchPanel.qml
   panels/TenderPanel.qml
   panels/ReturnPanel.qml
   panels/HistoryPanel.qml
@@ -68,6 +71,10 @@ set(SHELL_QML_FILES
   components/ScanField.qml
   components/BillTable.qml
   components/StatusLine.qml
+  components/TopBar.qml
+  components/ActionBar.qml
+  components/TotalsBlock.qml
+  components/CustomerBlock.qml
   theme/Theme.qml)
 foreach(_qml ${SHELL_QML_FILES})
   set_source_files_properties(${CMAKE_SOURCE_DIR}/qml/${_qml}
@@ -86,6 +93,9 @@ qt_add_qml_module(shell
     ${CMAKE_SOURCE_DIR}/qml/Main.qml
     ${CMAKE_SOURCE_DIR}/qml/screens/BillingScreen.qml
     ${CMAKE_SOURCE_DIR}/qml/panels/ItemPanel.qml
+    ${CMAKE_SOURCE_DIR}/qml/panels/ProductSearchPanel.qml
+    ${CMAKE_SOURCE_DIR}/qml/panels/BillDiscountPanel.qml
+    ${CMAKE_SOURCE_DIR}/qml/panels/CustomerSearchPanel.qml
     ${CMAKE_SOURCE_DIR}/qml/panels/TenderPanel.qml
     ${CMAKE_SOURCE_DIR}/qml/panels/ReturnPanel.qml
     ${CMAKE_SOURCE_DIR}/qml/panels/HistoryPanel.qml
@@ -94,6 +104,10 @@ qt_add_qml_module(shell
     ${CMAKE_SOURCE_DIR}/qml/components/ScanField.qml
     ${CMAKE_SOURCE_DIR}/qml/components/BillTable.qml
     ${CMAKE_SOURCE_DIR}/qml/components/StatusLine.qml
+    ${CMAKE_SOURCE_DIR}/qml/components/TopBar.qml
+    ${CMAKE_SOURCE_DIR}/qml/components/ActionBar.qml
+    ${CMAKE_SOURCE_DIR}/qml/components/TotalsBlock.qml
+    ${CMAKE_SOURCE_DIR}/qml/components/CustomerBlock.qml
     ${CMAKE_SOURCE_DIR}/qml/theme/Theme.qml
 )
 

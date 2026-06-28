@@ -67,8 +67,13 @@ public:
     Q_INVOKABLE void addLine(const QString& itemId, const QString& qty);
     Q_INVOKABLE void setQty(int lineNo, const QString& qty);
     Q_INVOKABLE void setLineDiscount(int lineNo, const QString& discount);
+    // Per-line unit-price override (proto set_price_override, tag 5) — exposed for the
+    // expanded-row line action. The engine still gates it on terminal perms.
+    Q_INVOKABLE void setPriceOverride(int lineNo, const QString& price);
     Q_INVOKABLE void removeLine(int lineNo);
     Q_INVOKABLE void setOrderDiscount(const QString& discount);
+    // Select a customer for the bill (proto select_customer, tag 8); empty id = walk-in.
+    Q_INVOKABLE void selectCustomer(const QString& posCustomerId);
     Q_INVOKABLE void addTender(const QString& method, const QString& amount, const QString& reference);
     Q_INVOKABLE void removeTender(int tenderNo);
     Q_INVOKABLE void settle();

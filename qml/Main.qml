@@ -37,16 +37,21 @@ ApplicationWindow {
     // re-pushes the snapshot, so the UI rehydrates with no re-sync logic here (spec §4).
     Component.onCompleted: PosEngineBridge.connectToEngine()
 
-    // ── Frozen keymap (UX §1). Skeleton: nav keys live; others are placeholders. ─
-    Shortcut { sequences: ["F12"];    onActivated: billing.focusScan() }       // scan-is-home
-    Shortcut { sequences: ["F11"];    onActivated: billing.navState = "history" }
-    Shortcut { sequences: ["F6"];     onActivated: billing.navState = "tender" }
-    Shortcut { sequences: ["F7"];     onActivated: billing.navState = "suspend" }  // UX §1: F7 = Suspend
-    Shortcut { sequences: ["F9"];     onActivated: billing.navState = "return" }
-    // UX §1: Ctrl+O = Payout — gated on payout_enabled (the server resolves the flag; the
-    // engine relays it via ConfigService). When disabled, the keystroke is inert.
-    Shortcut { sequences: ["Ctrl+O"]; onActivated: if (ConfigService.payoutEnabled) billing.navState = "payout" }
-    Shortcut { sequences: ["Esc"];    onActivated: billing.navState = "item" }
+    // ── Frozen keymap (spec action bar). Each maps to BillingScreen.doAction, the same
+    //    handler the on-screen icon buttons call, so button and key stay in lockstep. ──
+    Shortcut { sequences: ["F2"];     onActivated: billing.doAction("save") }     // Save
+    Shortcut { sequences: ["F3"];     onActivated: billing.doAction("clear") }    // Clear
+    Shortcut { sequences: ["F6"];     onActivated: billing.doAction("misc") }     // Misc
+    Shortcut { sequences: ["F7"];     onActivated: billing.doAction("hold") }     // Hold
+    Shortcut { sequences: ["F9"];     onActivated: billing.doAction("return") }   // Return
+    Shortcut { sequences: ["F11"];    onActivated: billing.doAction("history") }  // History
+    Shortcut { sequences: ["F12"];    onActivated: billing.doAction("charge") }   // Charge
+    // Bill-level discount opens the right-panel takeover (not on the uniform 8-button bar).
+    Shortcut { sequences: ["Ctrl+D"]; onActivated: billing.doAction("discount") }
+    // Payout — gated on payout_enabled (engine relays it via ConfigService); inert if off.
+    Shortcut { sequences: ["Ctrl+O"]; onActivated: billing.doAction("payout") }
+    // Esc returns the right panel to its product-search home-state (re-focuses search).
+    Shortcut { sequences: ["Esc"];    onActivated: billing.focusSearch() }
 
     BillingScreen {
         id: billing

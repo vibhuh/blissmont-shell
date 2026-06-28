@@ -2,22 +2,48 @@ import QtQuick
 import QtQuick.Layouts
 import Blissmont.Shell
 
-// panels/ItemPanel.qml — the persistent right-panel placeholder (spec §6).
-// In the skeleton it shows the active context label; post-skeleton each context
-// (item / tender / payout / history / return) becomes its own panel swapped in here.
+// panels/ItemPanel.qml — the right-panel host (spec). HOME state is product search; tender,
+// customer select, bill discount, qty/price override, return, history, suspend and payout
+// are TEMPORARY TAKEOVERS that restore the search home-state on done/cancel. The host
+// (BillingScreen) drives `context`; takeover panels ask to restore home via navigate("item").
 Rectangle {
     id: panel
     property string context: "item"
-    // A loaded panel asks the host (BillingScreen) to switch context — e.g. history hands a
-    // recalled bill to the return flow. BillingScreen sets navState from this.
+    property var vm: null   // BillingViewModel, threaded to the product-search home state
+    // A loaded panel asks the host to switch context (e.g. history → return seam, or a
+    // takeover restoring the "item" home-state).
     signal navigate(string context)
 
     color: Theme.surface
     radius: Theme.radius
     border.color: Theme.border
 
-    // The tender (F6), return (F9), and history (F11) contexts are real panels; the rest are
-    // still placeholders that swap in here as each context lands.
+    // HOME — product search (the panel returns here after every takeover).
+    Loader {
+        anchors.fill: parent
+        active: panel.context === "item"
+        visible: active
+        sourceComponent: ProductSearchPanel { vm: panel.vm }
+    }
+
+    Loader {
+        anchors.fill: parent
+        active: panel.context === "customer"
+        visible: active
+        sourceComponent: CustomerSearchPanel {
+            onDone: panel.navigate("item")
+        }
+    }
+
+    Loader {
+        anchors.fill: parent
+        active: panel.context === "billdiscount"
+        visible: active
+        sourceComponent: BillDiscountPanel {
+            onDone: panel.navigate("item")
+        }
+    }
+
     Loader {
         anchors.fill: parent
         active: panel.context === "tender"
@@ -55,13 +81,15 @@ Rectangle {
         sourceComponent: PayoutPanel {}
     }
 
+    // Fallback placeholder for contexts that swap in here as later slices land (e.g. misc).
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: Theme.pad
         spacing: Theme.gap
-        visible: panel.context !== "tender" && panel.context !== "return"
-                 && panel.context !== "history" && panel.context !== "suspend"
-                 && panel.context !== "payout"
+        visible: panel.context !== "item" && panel.context !== "customer"
+                 && panel.context !== "billdiscount" && panel.context !== "tender"
+                 && panel.context !== "return" && panel.context !== "history"
+                 && panel.context !== "suspend" && panel.context !== "payout"
 
         Text {
             text: qsTr("Panel: %1").arg(panel.context)
@@ -70,7 +98,7 @@ Rectangle {
             font.pixelSize: Theme.fontLarge
         }
         Text {
-            text: qsTr("Placeholder — context panels swap in here.")
+            text: qsTr("Separate build — swaps in here as the slice lands.")
             color: Theme.textMuted
             font.family: Theme.fontFamily
             font.pixelSize: Theme.fontBody

@@ -23,6 +23,8 @@ QVariant CartLineModel::data(const QModelIndex& index, int role) const {
         case TaxRateRole:         return l.taxRate;
         case TaxAmountRole:       return l.taxAmount;
         case LineTotalRole:       return l.lineTotal;
+        case HsnRole:             return l.hsn;
+        case DiscountEligibleRole: return l.discountEligible;
         default:                  return {};
     }
 }
@@ -39,6 +41,8 @@ QHash<int, QByteArray> CartLineModel::roleNames() const {
         {TaxRateRole, "taxRate"},
         {TaxAmountRole, "taxAmount"},
         {LineTotalRole, "lineTotal"},
+        {HsnRole, "hsn"},
+        {DiscountEligibleRole, "discountEligible"},
     };
 }
 
@@ -63,6 +67,8 @@ void CartLineModel::reset(const google::protobuf::RepeatedPtrField<
         out.taxRate = QString::fromStdString(l.tax_rate_str());
         out.taxAmount = QString::fromStdString(l.tax_amount_str());
         out.lineTotal = QString::fromStdString(l.line_total_str());
+        out.hsn = QString::fromStdString(l.hsn());
+        out.discountEligible = l.discount_eligible();
         lines_.push_back(std::move(out));
     }
     endResetModel();
