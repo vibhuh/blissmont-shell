@@ -22,10 +22,15 @@ QtObject {
     function toggle() { mode = (mode === "light" ? "dark" : "light") }
     readonly property bool isDark: mode === "dark"
 
-    // Spacing — 8pt scale.
-    readonly property int unit: 8
-    readonly property int gap: 16
+    // Spacing — 8pt scale. A single, consistent scale (Phase 3): use these everywhere so
+    // density reads evenly. xs=4 · sm=8 · md=12 · lg=16 · xl=24 · xxl=32.
+    readonly property int spaceXs: 4
+    readonly property int unit: 8      // sm
+    readonly property int spaceMd: 12
+    readonly property int gap: 16      // lg
     readonly property int pad: 16
+    readonly property int spaceXl: 24
+    readonly property int spaceXxl: 32
     readonly property int radius: 6
     readonly property int radiusSmall: 4
 
@@ -34,6 +39,12 @@ QtObject {
     readonly property int actionButton: 56 // bottom action-bar uniform button edge
     readonly property int iconButton: 32  // inline icon control (scope toggle, list/grid toggle)
     readonly property int chipHeight: 30  // category chip
+    readonly property int rowHeight: 40   // bill-grid row (Phase 3: even table density)
+
+    // Icon sizing (one icon family — components/Icon.qml). Stroke-based, themed.
+    readonly property int iconSm: 16
+    readonly property int iconMd: 20
+    readonly property int iconLg: 24
 
     // ── Palettes ─────────────────────────────────────────────────────────────
     // Dark — the original values, kept as the dark palette.
@@ -42,6 +53,7 @@ QtObject {
         readonly property color surface: "#1a1d23"
         readonly property color surfaceAlt: "#23272f"
         readonly property color border: "#2a2f37"
+        readonly property color divider: "#21262e"   // subtle in-panel separator (lighter than border)
         readonly property color text: "#e8eaed"
         readonly property color textMuted: "#9aa0a6"
         readonly property color accent: "#3b82f6"
@@ -57,6 +69,7 @@ QtObject {
         readonly property color surface: "#ffffff"
         readonly property color surfaceAlt: "#e7eaef"
         readonly property color border: "#d2d6dc"
+        readonly property color divider: "#eaedf1"   // subtle in-panel separator (lighter than border)
         readonly property color text: "#15181d"
         readonly property color textMuted: "#5b6168"
         readonly property color accent: "#2563eb"
@@ -73,6 +86,7 @@ QtObject {
     readonly property color surface: palette.surface
     readonly property color surfaceAlt: palette.surfaceAlt
     readonly property color border: palette.border
+    readonly property color divider: palette.divider
     readonly property color text: palette.text
     readonly property color textMuted: palette.textMuted
     readonly property color accent: palette.accent
@@ -88,6 +102,8 @@ QtObject {
     readonly property string monoFamily: "IBM Plex Mono"
     readonly property int fontSmall: 12   // sublines (HSN·GST%), chips, secondary labels
     readonly property int fontBody: 14
+    readonly property int fontMedium: 16  // emphasised body (item name, customer name)
     readonly property int fontLarge: 20
     readonly property int fontTotal: 28
+    readonly property int fontGrand: 34   // the Grand Total — the most prominent number on screen
 }

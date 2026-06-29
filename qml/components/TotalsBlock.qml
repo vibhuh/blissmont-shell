@@ -65,7 +65,7 @@ Rectangle {
                 Cell { label: qsTr("Taxable value"); value: totals.amt(totals.s.taxableValue) }
             }
 
-            Rectangle { Layout.preferredWidth: 1; Layout.fillHeight: true; color: Theme.border }
+            Rectangle { Layout.preferredWidth: 1; Layout.fillHeight: true; color: Theme.divider }
 
             // ── Right column — applicable GST pair + round off ────────────────
             ColumnLayout {
@@ -82,32 +82,42 @@ Rectangle {
             }
         }
 
-        Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.border }
+        Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.divider }
 
-        // ── Footer: counts (cross-check) + total payable ──────────────────────
+        // ── Footer: the GRAND TOTAL (the screen's most prominent number) gets the row's
+        //    full width on the right so it never crowds the label or clips; the label +
+        //    item/unit counts stack compactly on the left (Phase 3).
         RowLayout {
             Layout.fillWidth: true
-            spacing: Theme.gap
-            Text {
-                text: qsTr("%1 items · %2 units")
-                        .arg(totals.s.itemCount)
-                        .arg(Format.qty(totals.s.unitCount))
-                color: Theme.textMuted
-                font.family: Theme.fontFamily
-                font.pixelSize: Theme.fontSmall
+            Layout.topMargin: Theme.spaceXs
+            spacing: Theme.unit
+            ColumnLayout {
+                spacing: 0
+                Text {
+                    text: qsTr("Total payable")
+                    color: Theme.textMuted
+                    font.family: Theme.fontFamily
+                    font.pixelSize: Theme.fontSmall
+                }
+                Text {
+                    text: qsTr("%1 items · %2 units")
+                            .arg(totals.s.itemCount)
+                            .arg(Format.qty(totals.s.unitCount))
+                    color: Theme.textMuted
+                    font.family: Theme.fontFamily
+                    font.pixelSize: Theme.fontSmall
+                }
             }
-            Item { Layout.fillWidth: true }
             Text {
-                text: qsTr("Total payable")
-                color: Theme.textMuted
-                font.family: Theme.fontFamily
-                font.pixelSize: Theme.fontBody
-            }
-            Text {
+                Layout.fillWidth: true
+                Layout.alignment: Qt.AlignVCenter
                 text: Format.money(totals.s.total)
                 color: Theme.text
                 font.family: Theme.monoFamily
-                font.pixelSize: Theme.fontTotal
+                font.pixelSize: Theme.fontGrand
+                font.weight: Font.DemiBold
+                horizontalAlignment: Text.AlignRight
+                elide: Text.ElideLeft
             }
         }
     }

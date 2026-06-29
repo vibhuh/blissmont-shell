@@ -28,35 +28,50 @@ Rectangle {
     radius: Theme.radius
     border.color: Theme.border
 
-    // One uniform action button — icon glyph + tooltip + shortcut hint. Icon-only: the
-    // label/shortcut live in the tooltip, never as appended text (keeps all seven uniform).
+    // One uniform action button — icon (from the single icon family) + tooltip + shortcut
+    // hint. Icon-only: the label/shortcut live in the tooltip, never as appended text, so
+    // all seven stay identical in width AND height. Restrained palette (Phase 3): only the
+    // PRIMARY verb (Charge) carries the accent fill; Void carries danger; the rest are
+    // neutral ghost buttons. Every button has hover / pressed / disabled states.
     component ActionButton: AbstractButton {
         id: btn
-        property string glyph: ""
+        property string iconName: ""
         property string label: ""
         property string shortcutHint: ""
         property bool danger: false
+        property bool primary: false
         Layout.fillWidth: true
         Layout.preferredHeight: Theme.actionButton
         implicitHeight: Theme.actionButton
         hoverEnabled: true
 
-        contentItem: Text {
-            text: btn.glyph
-            color: !btn.enabled ? Theme.textMuted
-                                : (btn.danger ? Theme.danger : Theme.text)
-            font.family: Theme.fontFamily
-            font.pixelSize: Theme.fontLarge
-            horizontalAlignment: Text.AlignHCenter
-            verticalAlignment: Text.AlignVCenter
+        readonly property color fg: !enabled ? Theme.textMuted
+                                    : primary ? Theme.selectionText
+                                    : danger  ? Theme.danger
+                                    : Theme.text
+
+        contentItem: Item {
+            Icon {
+                anchors.centerIn: parent
+                name: btn.iconName
+                color: btn.fg
+                size: Theme.iconLg
+            }
         }
         background: Rectangle {
             radius: Theme.radius
-            color: btn.down ? Theme.surfaceAlt : Theme.bg
-            border.width: 1
-            border.color: btn.danger && btn.enabled ? Theme.danger
-                          : (btn.hovered && btn.enabled ? Theme.accent : Theme.border)
-            opacity: btn.enabled ? 1.0 : 0.5
+            color: btn.primary
+                   ? (btn.down ? Qt.darker(Theme.accent, 1.2)
+                               : (btn.hovered ? Qt.lighter(Theme.accent, 1.08) : Theme.accent))
+                   : (btn.down ? Theme.surfaceAlt
+                               : (btn.hovered ? Theme.surfaceAlt : "transparent"))
+            border.width: btn.primary ? 0 : 1
+            // Neutral border at rest; on hover, danger (Void) or accent (the rest). Keeps
+            // the bar calm — the red lives in the Void icon, not a persistent outline.
+            border.color: !btn.enabled ? Theme.border
+                          : (btn.hovered ? (btn.danger ? Theme.danger : Theme.accent)
+                                         : Theme.border)
+            opacity: btn.enabled ? 1.0 : 0.45
         }
 
         // Tooltip: hover (desktop) + long-press (touch). The full label + shortcut live here.
@@ -76,13 +91,13 @@ Rectangle {
         anchors.margins: Theme.unit
         spacing: Theme.unit
 
-        ActionButton { glyph: "₹";    label: qsTr("Charge");   shortcutHint: "F12"; enabled: bar.cartActive; onClicked: bar.triggered("charge") }
-        ActionButton { glyph: "⏸";    label: qsTr("Hold");     shortcutHint: "F7";  enabled: bar.cartActive; onClicked: bar.triggered("hold") }
-        ActionButton { glyph: "%";    label: qsTr("Discount"); shortcutHint: "Ctrl+D"; enabled: bar.cartActive && ConfigService.allowDiscounts; onClicked: bar.triggered("discount") }
-        ActionButton { glyph: "＋";    label: qsTr("Sundry");   shortcutHint: "F6";  enabled: bar.cartActive; onClicked: bar.triggered("sundry") }
-        ActionButton { glyph: "\u{1F5A8}"; label: qsTr("Print"); shortcutHint: ""; enabled: bar.canReprint; onClicked: bar.triggered("print") }
-        ActionButton { glyph: "✕";    label: qsTr("Void");     shortcutHint: "F3";  danger: true; enabled: bar.cartActive; onClicked: bar.triggered("clear") }
-        ActionButton { id: tasksBtn; glyph: "☰"; label: qsTr("Tasks ▾"); shortcutHint: "F10"; enabled: true; onClicked: bar.openTasks() }
+        ActionButton { iconName: "charge";  primary: true; label: qsTr("Charge");   shortcutHint: "F12"; enabled: bar.cartActive; onClicked: bar.triggered("charge") }
+        ActionButton { iconName: "hold";    label: qsTr("Hold");     shortcutHint: "F7";  enabled: bar.cartActive; onClicked: bar.triggered("hold") }
+        ActionButton { iconName: "discount"; label: qsTr("Discount"); shortcutHint: "Ctrl+D"; enabled: bar.cartActive && ConfigService.allowDiscounts; onClicked: bar.triggered("discount") }
+        ActionButton { iconName: "sundry";  label: qsTr("Sundry");   shortcutHint: "F6";  enabled: bar.cartActive; onClicked: bar.triggered("sundry") }
+        ActionButton { iconName: "print";   label: qsTr("Print");    shortcutHint: "";    enabled: bar.canReprint; onClicked: bar.triggered("print") }
+        ActionButton { iconName: "void";    label: qsTr("Void");     shortcutHint: "F3";  danger: true; enabled: bar.cartActive; onClicked: bar.triggered("clear") }
+        ActionButton { id: tasksBtn; iconName: "tasks"; label: qsTr("Tasks ▾"); shortcutHint: "F10"; enabled: true; onClicked: bar.openTasks() }
     }
 
     // The Tasks launcher popup (brief §5). Selecting an item closes the menu (Menu does that)

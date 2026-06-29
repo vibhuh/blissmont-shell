@@ -134,8 +134,8 @@ Item {
                 // 0px. The cap keeps it a fixed bottom strip so BillTable fills the rest.
                 RowLayout {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 132
-                    Layout.maximumHeight: 132
+                    Layout.preferredHeight: 164
+                    Layout.maximumHeight: 164
                     spacing: Theme.gap
                     CustomerBlock {
                         Layout.fillWidth: true
@@ -151,9 +151,11 @@ Item {
                 }
             }
 
+            // Right panel widened (Phase 3) for the search field, chips, quick-keys and
+            // touch targets; the cart grid still dominates the larger left column.
             ItemPanel {
-                Layout.preferredWidth: 320
-                Layout.minimumWidth: 300
+                Layout.preferredWidth: 420
+                Layout.minimumWidth: 380
                 Layout.fillHeight: true
                 context: screen.navState
                 vm: vm
