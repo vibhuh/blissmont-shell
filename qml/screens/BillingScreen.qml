@@ -13,7 +13,10 @@ import Blissmont.Shell
 Item {
     id: screen
     property string navState: "item"
-    property string notice: ""   // transient placeholder feedback (Save/Print/Misc stubs)
+    property string notice: ""   // transient feedback (rejections, not-yet-reachable notices)
+    // The receipt # of the bill settled this session — what Print reprints (brief §3). Set by
+    // the orderSettled handler; gates the Print button (nothing to reprint until a sale completes).
+    property string lastReceiptNo: ""
 
     readonly property bool cartActive: {
         var s = PosEngineBridge.summary.status
@@ -21,26 +24,72 @@ Item {
     }
 
     function focusSearch() { screen.navState = "item" }  // re-entering home re-focuses search
+    function openTasks() { actionBar.openTasks() }       // global-shortcut entry to the launcher
 
-    // Single action handler — backs both the ActionBar buttons and Main.qml's global F-keys.
+    // Single action handler — backs the ActionBar buttons, the Tasks launcher items, and
+    // Main.qml's global F-keys (one path, so button and key stay in lockstep).
     function doAction(name) {
         switch (name) {
-        case "save":    screen.notify(qsTr("Save — separate build")); break
-        case "print":   screen.notify(qsTr("Print — separate build")); break
-        case "hold":    screen.navState = "suspend"; break
-        case "return":  screen.navState = "return"; break
-        case "history": screen.navState = "history"; break
-        case "misc":    screen.navState = "misc"; break   // Misc panel is a later slice
-        case "clear":   PosEngineBridge.voidCart(); screen.navState = "item"; break
-        case "charge":  screen.navState = "tender"; break
+        // ── Bill-scoped action bar (brief §4) ──
+        case "charge":   screen.navState = "tender"; break
+        case "hold":     screen.navState = "suspend"; break
         case "discount": screen.navState = "billdiscount"; break
+        case "sundry":   screen.navState = "sundry"; break
+        case "print":
+            if (screen.lastReceiptNo !== "") PosEngineBridge.reprintBill(screen.lastReceiptNo)
+            else screen.notify(qsTr("No settled bill to print yet"))
+            break
+        case "clear":    PosEngineBridge.voidCart(); screen.navState = "item"; break  // Void
+        case "tasks":    screen.openTasks(); break
+        // ── Tasks launcher items (brief §5) ──
+        case "history":  screen.navState = "history"; break
+        case "payout":   if (ConfigService.payoutEnabled) screen.navState = "payout"; break
+        case "cashin":   screen.navState = "cashin"; break
+        case "calculator": screen.navState = "calculator"; break
+        case "settings": screen.navState = "settings"; break
+        case "zreport":  PosEngineBridge.runEod(); break  // engine prints the Z / closes the batch
+        case "opendrawer":
+            // No terminal command for a manual drawer pulse in this contract — the drawer
+            // pulses with the ESC/POS receipt at settle (engine-owned). Surface that honestly.
+            screen.notify(qsTr("Open Drawer — drawer pulses automatically at settle"))
+            break
+        case "xreport":
+            // X-report is a server-side management surface; there is no terminal command for it.
+            screen.notify(qsTr("X Report — view on the management surface (server-side)"))
+            break
+        // ── Other nav (returns seam, customer select, home) ──
+        case "return":   screen.navState = "return"; break
         case "customer": screen.navState = "customer"; break
-        case "payout":  if (ConfigService.payoutEnabled) screen.navState = "payout"; break
-        case "home":    screen.navState = "item"; break
+        case "home":     screen.navState = "item"; break
         }
     }
     function notify(msg) { screen.notice = msg; noticeTimer.restart() }
     Timer { id: noticeTimer; interval: 2500; onTriggered: screen.notice = "" }
+
+    // ── Post-settle (brief §2) + EOD feedback. orderSettled fires BEFORE the engine's empty-cart
+    //    reset is applied (events are delivered in order on the UI thread), so the summary still
+    //    holds the just-taken tender — capture received/change here, then show the confirmation.
+    Connections {
+        target: PosEngineBridge
+        function onOrderSettled(receiptNo, provisional, total) {
+            screen.lastReceiptNo = receiptNo
+            saleComplete.receiptNo = receiptNo
+            saleComplete.total = total
+            saleComplete.amountReceived = PosEngineBridge.summary.amountTendered
+            saleComplete.changeDue = PosEngineBridge.summary.changeDue
+            saleComplete.provisional = provisional
+            screen.navState = "item"      // reset the right panel to product-search home
+            saleComplete.present()        // green "Sale completed" card (engine already printed)
+        }
+        function onEodResult(batchId, provisional) {
+            screen.notify(provisional ? qsTr("Day close recorded (offline): %1").arg(batchId)
+                                      : qsTr("Day close recorded: %1").arg(batchId))
+        }
+        function onEodBlocked(openShiftIds) {
+            screen.notify(qsTr("Z Report blocked — close the open shift first (%1)")
+                          .arg(openShiftIds.length))
+        }
+    }
 
     // The view-model for the scan/search home-state and transient status.
     BillingViewModel {
@@ -121,10 +170,20 @@ Item {
 
         // ── Zone 4: bottom action bar ─────────────────────────────────────────
         ActionBar {
+            id: actionBar
             Layout.fillWidth: true
             cartActive: screen.cartActive
-            allowReturns: ConfigService.allowReturns
+            canReprint: screen.lastReceiptNo !== ""
             onTriggered: (name) => screen.doAction(name)
         }
+    }
+
+    // ── Post-settle confirmation overlay (brief §2) ──────────────────────────────
+    // Sits above every zone; shown by the orderSettled handler. On dismiss it re-focuses the
+    // scan field so the cashier rings the next customer immediately.
+    SaleCompleteOverlay {
+        id: saleComplete
+        anchors.fill: parent
+        onDismissed: screen.focusSearch()
     }
 }

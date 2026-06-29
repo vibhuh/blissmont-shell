@@ -69,12 +69,18 @@ set(SHELL_QML_FILES
   panels/HistoryPanel.qml
   panels/SuspendPanel.qml
   panels/PayoutPanel.qml
+  panels/SundryPanel.qml
+  panels/CashInPanel.qml
+  panels/CalculatorPanel.qml
+  panels/SettingsPanel.qml
   components/LookupKeys.qml
   components/ScanField.qml
   components/BillTable.qml
   components/StatusLine.qml
   components/TopBar.qml
   components/ActionBar.qml
+  components/TasksMenu.qml
+  components/SaleCompleteOverlay.qml
   components/TotalsBlock.qml
   components/CustomerBlock.qml
   theme/Theme.qml)
@@ -103,12 +109,18 @@ qt_add_qml_module(shell
     ${CMAKE_SOURCE_DIR}/qml/panels/HistoryPanel.qml
     ${CMAKE_SOURCE_DIR}/qml/panels/SuspendPanel.qml
     ${CMAKE_SOURCE_DIR}/qml/panels/PayoutPanel.qml
+    ${CMAKE_SOURCE_DIR}/qml/panels/SundryPanel.qml
+    ${CMAKE_SOURCE_DIR}/qml/panels/CashInPanel.qml
+    ${CMAKE_SOURCE_DIR}/qml/panels/CalculatorPanel.qml
+    ${CMAKE_SOURCE_DIR}/qml/panels/SettingsPanel.qml
     ${CMAKE_SOURCE_DIR}/qml/components/LookupKeys.qml
     ${CMAKE_SOURCE_DIR}/qml/components/ScanField.qml
     ${CMAKE_SOURCE_DIR}/qml/components/BillTable.qml
     ${CMAKE_SOURCE_DIR}/qml/components/StatusLine.qml
     ${CMAKE_SOURCE_DIR}/qml/components/TopBar.qml
     ${CMAKE_SOURCE_DIR}/qml/components/ActionBar.qml
+    ${CMAKE_SOURCE_DIR}/qml/components/TasksMenu.qml
+    ${CMAKE_SOURCE_DIR}/qml/components/SaleCompleteOverlay.qml
     ${CMAKE_SOURCE_DIR}/qml/components/TotalsBlock.qml
     ${CMAKE_SOURCE_DIR}/qml/components/CustomerBlock.qml
     ${CMAKE_SOURCE_DIR}/qml/theme/Theme.qml

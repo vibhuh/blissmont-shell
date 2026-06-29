@@ -3,18 +3,25 @@ import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import Blissmont.Shell
 
-// components/ActionBar.qml — zone 4 (spec): bill-scoped, icon-only, UNIFORM action bar.
-// Eight equal-size buttons, no appended amounts (Charge is the same size as the rest).
-// Each carries a tooltip (hover desktop + long-press touch) and a keyboard shortcut hint;
-// enable/disable is driven by cart state. The bar does NOT mutate cart state — it raises
-// `triggered(name)` and the host (BillingScreen) maps the name to a nav/command, so the
-// same handler backs both these buttons and Main.qml's global F-key shortcuts.
+// components/ActionBar.qml — zone 4 (brief §4): the bill-scoped, icon-only, UNIFORM action bar.
+// The final set is the seven business verbs of the current bill:
+//   Charge (F12) · Hold · Discount · Sundry · Print · Void · Tasks ▾
+// "Save" is gone (a software verb, ambiguous in a POS). Sale actions only live here; operational
+// actions live under Tasks ▾ (the ▾ marks a menu, not an immediate action). Each button carries
+// a tooltip (hover + long-press) and a shortcut hint; enable/disable is driven by cart state
+// (and, for Print, by whether a just-settled bill exists to reprint). The bar does NOT mutate
+// state — it raises `triggered(name)` and the host (BillingScreen) maps the name to a
+// nav/command, so the same handler backs both these buttons and Main.qml's global F-keys.
 Rectangle {
     id: bar
     // State the gating reads (host-bound). cartActive == cart has lines (status "active").
     property bool cartActive: false
-    property bool allowReturns: true
+    // canReprint == a bill was just settled this session, so Print can reprint it.
+    property bool canReprint: false
     signal triggered(string name)
+
+    // Open the Tasks launcher — called by the Tasks button and by the host's global shortcut.
+    function openTasks() { tasksMenu.popup(tasksBtn, 0, -tasksMenu.height) }
 
     implicitHeight: Theme.actionButton + 2 * Theme.unit
     color: Theme.surface
@@ -22,7 +29,7 @@ Rectangle {
     border.color: Theme.border
 
     // One uniform action button — icon glyph + tooltip + shortcut hint. Icon-only: the
-    // label/shortcut live in the tooltip, never as appended text (keeps all eight uniform).
+    // label/shortcut live in the tooltip, never as appended text (keeps all seven uniform).
     component ActionButton: AbstractButton {
         id: btn
         property string glyph: ""
@@ -69,13 +76,20 @@ Rectangle {
         anchors.margins: Theme.unit
         spacing: Theme.unit
 
-        ActionButton { glyph: "\u{1F4BE}"; label: qsTr("Save");    shortcutHint: "F2";  enabled: bar.cartActive; onClicked: bar.triggered("save") }
-        ActionButton { glyph: "\u{1F5A8}"; label: qsTr("Print");   shortcutHint: "";    enabled: bar.cartActive; onClicked: bar.triggered("print") }
-        ActionButton { glyph: "⏸";    label: qsTr("Hold");    shortcutHint: "F7";  enabled: bar.cartActive; onClicked: bar.triggered("hold") }
-        ActionButton { glyph: "↩";    label: qsTr("Return");  shortcutHint: "F9";  enabled: bar.allowReturns; onClicked: bar.triggered("return") }
-        ActionButton { glyph: "\u{1F551}"; label: qsTr("History"); shortcutHint: "F11"; enabled: true; onClicked: bar.triggered("history") }
-        ActionButton { glyph: "…";    label: qsTr("Misc");    shortcutHint: "F6";  enabled: bar.cartActive; onClicked: bar.triggered("misc") }
-        ActionButton { glyph: "✕";    label: qsTr("Clear");   shortcutHint: "F3";  danger: true; enabled: bar.cartActive; onClicked: bar.triggered("clear") }
-        ActionButton { glyph: "₹";    label: qsTr("Charge");  shortcutHint: "F12"; enabled: bar.cartActive; onClicked: bar.triggered("charge") }
+        ActionButton { glyph: "₹";    label: qsTr("Charge");   shortcutHint: "F12"; enabled: bar.cartActive; onClicked: bar.triggered("charge") }
+        ActionButton { glyph: "⏸";    label: qsTr("Hold");     shortcutHint: "F7";  enabled: bar.cartActive; onClicked: bar.triggered("hold") }
+        ActionButton { glyph: "%";    label: qsTr("Discount"); shortcutHint: "Ctrl+D"; enabled: bar.cartActive && ConfigService.allowDiscounts; onClicked: bar.triggered("discount") }
+        ActionButton { glyph: "＋";    label: qsTr("Sundry");   shortcutHint: "F6";  enabled: bar.cartActive; onClicked: bar.triggered("sundry") }
+        ActionButton { glyph: "\u{1F5A8}"; label: qsTr("Print"); shortcutHint: ""; enabled: bar.canReprint; onClicked: bar.triggered("print") }
+        ActionButton { glyph: "✕";    label: qsTr("Void");     shortcutHint: "F3";  danger: true; enabled: bar.cartActive; onClicked: bar.triggered("clear") }
+        ActionButton { id: tasksBtn; glyph: "☰"; label: qsTr("Tasks ▾"); shortcutHint: "F10"; enabled: true; onClicked: bar.openTasks() }
+    }
+
+    // The Tasks launcher popup (brief §5). Selecting an item closes the menu (Menu does that)
+    // and re-raises the chosen action through the bar's own triggered(name), so the host maps
+    // Tasks actions with the same handler as the bar buttons and F-keys.
+    TasksMenu {
+        id: tasksMenu
+        onSelected: (action) => bar.triggered(action)
     }
 }

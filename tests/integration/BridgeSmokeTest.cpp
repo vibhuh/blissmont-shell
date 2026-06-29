@@ -315,6 +315,31 @@ TEST(BridgeSmoke, SuspendResumeRoundTrip) {
     bridge.disconnectFromEngine();
 }
 
+// The Tasks-launcher Cash In path over real gRPC: recordCashMovement("cash_in", …) round-trips
+// the existing record_cash_movement command (proto tag 17) and the engine echoes
+// CashMovementRecorded with the type + the amount it accepted. Proves the new bridge wiring
+// (no contract change) reaches the engine's existing handler. Requires the dev engine.
+TEST(BridgeSmoke, CashInRecordsAndEchoes) {
+    const char* target = engineTarget();
+    if (!target) {
+        GTEST_SKIP() << "set BLISSMONT_ENGINE_TARGET to a running engine to run this";
+    }
+
+    PosEngineBridge bridge;
+    QSignalSpy connSpy(&bridge, &PosEngineBridge::connectionChanged);
+    bridge.connectToEngine(QString::fromUtf8(target));
+    ASSERT_TRUE(connSpy.wait(2000));
+
+    QSignalSpy cashSpy(&bridge, &PosEngineBridge::cashMovementRecorded);
+    bridge.recordCashMovement(QStringLiteral("cash_in"), QStringLiteral("500"),
+                              QStringLiteral("opening float top-up"));
+    ASSERT_TRUE(cashSpy.wait(3000)) << "recordCashMovement never produced CashMovementRecorded";
+    EXPECT_EQ(cashSpy.at(0).at(1).toString(), QStringLiteral("cash_in"));
+    EXPECT_FALSE(cashSpy.at(0).at(2).toString().isEmpty()) << "echoed amount missing";
+
+    bridge.disconnectFromEngine();
+}
+
 // Phase B over real gRPC: under refund_tender_mode="both" the cashier must pick the refund
 // tender. Committing with no choice is rejected (REFUND_METHOD_REQUIRED); committing with an
 // explicit "cash" choice issues the credit note. Requires the dev engine started with

@@ -157,6 +157,30 @@ void PosEngineBridge::applyEvent(const Event& evt) {
                                 QString::fromStdString(evt.payout_recorded().amount_str()),
                                 QString::fromStdString(evt.payout_recorded().category()));
             break;
+        case E::kCashMovementRecorded:
+            // The engine echoes the recorded cash movement (UX §12) — surface it as the
+            // Cash In confirmation. Display only; the engine/server own the GL posting.
+            emit cashMovementRecorded(
+                QString::fromStdString(evt.cash_movement_recorded().movement_id()),
+                QString::fromStdString(evt.cash_movement_recorded().type()),
+                QString::fromStdString(evt.cash_movement_recorded().amount_str()));
+            break;
+        case E::kEodResult:
+            // Manual day-close succeeded (UX §12) — the batch id is provisional until sync.
+            emit eodResult(QString::fromStdString(evt.eod_result().batch_id()),
+                           evt.eod_result().provisional());
+            break;
+        case E::kEodBlocked: {
+            // Day-close attempted with shift(s) still open (UX §12) — surface the open ids
+            // so the cashier knows what to close first.
+            QStringList openShiftIds;
+            openShiftIds.reserve(evt.eod_blocked().open_shift_ids_size());
+            for (const auto& id : evt.eod_blocked().open_shift_ids()) {
+                openShiftIds.push_back(QString::fromStdString(id));
+            }
+            emit eodBlocked(openShiftIds);
+            break;
+        }
         case E::kAuthRequired:
             emit authRequired(QString::fromStdString(evt.auth_required().action()),
                               QString::fromStdString(evt.auth_required().reason()));
@@ -302,6 +326,16 @@ void PosEngineBridge::addMiscCharge(const QString& description, const QString& a
     auto* m = cmd.mutable_add_misc_charge();
     m->set_description(description.toStdString());
     m->set_amount_str(amount.toStdString());
+    writeCommand(std::move(cmd));
+}
+
+void PosEngineBridge::recordCashMovement(const QString& type, const QString& amount,
+                                         const QString& reason) {
+    Command cmd;
+    auto* m = cmd.mutable_record_cash_movement();
+    m->set_type(type.toStdString());
+    m->set_amount_str(amount.toStdString());
+    m->set_reason(reason.toStdString());
     writeCommand(std::move(cmd));
 }
 

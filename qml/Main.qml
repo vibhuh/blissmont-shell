@@ -39,14 +39,14 @@ ApplicationWindow {
 
     // ── Frozen keymap (spec action bar). Each maps to BillingScreen.doAction, the same
     //    handler the on-screen icon buttons call, so button and key stay in lockstep. ──
-    Shortcut { sequences: ["F2"];     onActivated: billing.doAction("save") }     // Save
-    Shortcut { sequences: ["F3"];     onActivated: billing.doAction("clear") }    // Clear
-    Shortcut { sequences: ["F6"];     onActivated: billing.doAction("misc") }     // Misc
+    Shortcut { sequences: ["F3"];     onActivated: billing.doAction("clear") }    // Void
+    Shortcut { sequences: ["F6"];     onActivated: billing.doAction("sundry") }   // Sundry
     Shortcut { sequences: ["F7"];     onActivated: billing.doAction("hold") }     // Hold
-    Shortcut { sequences: ["F9"];     onActivated: billing.doAction("return") }   // Return
+    Shortcut { sequences: ["F9"];     onActivated: billing.doAction("return") }   // Return (via History seam too)
+    Shortcut { sequences: ["F10"];    onActivated: billing.openTasks() }          // Tasks launcher
     Shortcut { sequences: ["F11"];    onActivated: billing.doAction("history") }  // History
     Shortcut { sequences: ["F12"];    onActivated: billing.doAction("charge") }   // Charge
-    // Bill-level discount opens the right-panel takeover (not on the uniform 8-button bar).
+    // Bill-level discount opens the right-panel takeover (on the bar as Discount).
     Shortcut { sequences: ["Ctrl+D"]; onActivated: billing.doAction("discount") }
     // Payout — gated on payout_enabled (engine relays it via ConfigService); inert if off.
     Shortcut { sequences: ["Ctrl+O"]; onActivated: billing.doAction("payout") }

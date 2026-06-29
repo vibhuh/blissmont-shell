@@ -81,7 +81,44 @@ Rectangle {
         sourceComponent: PayoutPanel {}
     }
 
-    // Fallback placeholder for contexts that swap in here as later slices land (e.g. misc).
+    // ── Tasks-launcher panels (brief §5) ──────────────────────────────────────
+    Loader {
+        anchors.fill: parent
+        active: panel.context === "sundry"
+        visible: active
+        sourceComponent: SundryPanel {
+            onDone: panel.navigate("item")
+        }
+    }
+
+    Loader {
+        anchors.fill: parent
+        active: panel.context === "cashin"
+        visible: active
+        sourceComponent: CashInPanel {
+            onDone: panel.navigate("item")
+        }
+    }
+
+    Loader {
+        anchors.fill: parent
+        active: panel.context === "calculator"
+        visible: active
+        sourceComponent: CalculatorPanel {
+            onDone: panel.navigate("item")
+        }
+    }
+
+    Loader {
+        anchors.fill: parent
+        active: panel.context === "settings"
+        visible: active
+        sourceComponent: SettingsPanel {
+            onDone: panel.navigate("item")
+        }
+    }
+
+    // Fallback placeholder for contexts that swap in here as later slices land.
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: Theme.pad
@@ -90,6 +127,8 @@ Rectangle {
                  && panel.context !== "billdiscount" && panel.context !== "tender"
                  && panel.context !== "return" && panel.context !== "history"
                  && panel.context !== "suspend" && panel.context !== "payout"
+                 && panel.context !== "sundry" && panel.context !== "cashin"
+                 && panel.context !== "calculator" && panel.context !== "settings"
 
         Text {
             text: qsTr("Panel: %1").arg(panel.context)
