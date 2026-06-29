@@ -61,4 +61,10 @@ void ConfigService::applyConfig(bool allowReturns, bool payoutEnabled, bool allo
     emit changed();
 }
 
+void ConfigService::setThemeMode(const QString& mode) {
+    if (themeMode_ == mode) return;  // idempotent — no churn on re-apply
+    themeMode_ = mode;
+    emit changed();
+}
+
 }  // namespace blissmont::services

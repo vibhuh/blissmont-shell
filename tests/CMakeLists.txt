@@ -8,6 +8,7 @@ qt_add_executable(shell_unit_tests
   unit/MoneyTest.cpp
   unit/CartLineModelTest.cpp
   unit/BillingViewModelTest.cpp
+  unit/LookupControllerTest.cpp
   unit/ConfigServiceTest.cpp
   unit/TenderViewModelTest.cpp
   unit/ReturnViewModelTest.cpp

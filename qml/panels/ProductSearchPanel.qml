@@ -7,14 +7,22 @@ import Blissmont.Shell
 // field with an inline icon scope toggle, category chips, and quick-keys in either a
 // LIST (keyboard/scanner-dense, supermarket) or GRID (≥64px touch tiles, limited-SKU)
 // interaction model. The panel ALWAYS returns here after a takeover. The live scan path
-// stays the engine's (Enter dispatches scanItem via the billing view-model); the
-// quick-keys dispatch addLine.
+// stays the engine's (Enter with no catalog match dispatches scanItem via the billing
+// view-model); selecting a result dispatches addLine.
 //
-// DEFERRED DATA: there is no product-search/catalog contract on the engine yet (the
-// engine serves a fake catalog with no path to seeded data). So the chips/quick-keys
-// bind to a small in-shell DEMO catalog below, and search filters it client-side. When a
-// catalog/search contract lands, swap `catalog` for the engine-backed model — the search
-// field, scope toggle, chips, and both quick-key interaction models stay as-is.
+// KEYBOARD-FIRST LOOKUP (SHELL_KEYBOARD_LOOKUP brief, Part 1) — and the REFERENCE every
+// future lookup (customer, supplier, ledger, warehouse, tax-code) reuses. The ranked filter
+// + highlight state live in C++ (LookupController, unit-tested); the Qt key-routing lives in
+// the reusable LookupKeys.qml. This panel is the FIRST CONSUMER and the template: it owns only
+// its own layout (scope toggle, category chips, list/grid views) and binds them to that one
+// controller + one key-router. To add a lookup elsewhere, instantiate the same two and lay out
+// to taste.
+//
+// DEFERRED DATA: there is no product-search/catalog contract on the engine yet (the engine
+// serves a fake catalog with no path to seeded data). So the chips/quick-keys bind to a small
+// in-shell DEMO catalog below, and the lookup ranks it client-side. When a catalog/search
+// contract lands, feed the engine-backed rows into the SAME controller — the field, scope
+// toggle, chips, both quick-key views, and all keyboard behavior stay as-is.
 Item {
     id: panel
     property var vm: null                       // BillingViewModel (for the live scan path)
@@ -23,16 +31,19 @@ Item {
     property string activeCategory: "All"
 
     function focusSearch() { searchField.forceActiveFocus() }
-    Component.onCompleted: searchField.forceActiveFocus()  // scan-is-home
+    Component.onCompleted: { lookup.setItems(panel.itemsForCategory); searchField.forceActiveFocus() }  // scan-is-home
 
     // ── In-shell DEMO catalog (placeholder for the deferred engine catalog) ──────
+    // ALIGNED to the dev engine's seeded products (rachis-core cmd/blissmont-engine
+    // demoProducts) so a row PICK dispatches addLine() with an item id the engine can
+    // resolve (it looks up AddLine by item_id) — i.e. clicking a row actually lands a
+    // line in the cart against the dev engine. The `id` here MUST equal the engine's
+    // ItemId. When a real catalog/search contract lands, this whole list is replaced by
+    // the engine-backed model (see header note) and the alignment becomes moot.
     readonly property var catalog: [
-        { id: "1001", name: "Toor Dal 1kg",      sku: "TD1",  barcode: "8901001", price: "120.00", category: "Grocery", hsn: "0713", gst: "5" },
-        { id: "1002", name: "Basmati Rice 5kg",  sku: "BR5",  barcode: "8901002", price: "560.00", category: "Grocery", hsn: "1006", gst: "5" },
-        { id: "2001", name: "Full Cream Milk 1L",sku: "FCM1", barcode: "8902001", price: "62.00",  category: "Dairy",   hsn: "0401", gst: "0" },
-        { id: "2002", name: "Paneer 200g",       sku: "PN2",  barcode: "8902002", price: "95.00",  category: "Dairy",   hsn: "0406", gst: "5" },
-        { id: "3001", name: "Hand Wash 250ml",   sku: "HW2",  barcode: "8903001", price: "99.00",  category: "Care",    hsn: "3401", gst: "18" },
-        { id: "3002", name: "Shampoo 180ml",     sku: "SH1",  barcode: "8903002", price: "165.00", category: "Care",    hsn: "3305", gst: "18" }
+        { id: "ITEM-A",    name: "Widget",          sku: "SKU-A",   barcode: "111",     price: "100.00", category: "Hardware", hsn: "—", gst: "18" },
+        { id: "ITEM-B",    name: "Gadget",          sku: "SKU-B",   barcode: "222",     price: "250.00", category: "Hardware", hsn: "—", gst: "18" },
+        { id: "ITEM-TEST", name: "Smoke Test Item", sku: "TESTSKU", barcode: "TESTSKU", price: "100.00", category: "Test",     hsn: "—", gst: "18" }
     ]
 
     readonly property var categories: {
@@ -42,16 +53,14 @@ Item {
         return out
     }
 
-    readonly property var filtered: {
-        var q = searchField.text.toLowerCase().trim()
-        return catalog.filter(function (p) {
-            if (panel.activeCategory !== "All" && p.category !== panel.activeCategory) return false
-            if (q === "") return true
-            if (panel.scope === "barcode") return p.barcode.toLowerCase().indexOf(q) >= 0
-            return (p.name + " " + p.sku + " " + p.barcode).toLowerCase().indexOf(q) >= 0
-        })
+    // The category pre-filter feeds the controller; the controller does the ranked text search.
+    readonly property var itemsForCategory: {
+        if (panel.activeCategory === "All") return panel.catalog
+        return panel.catalog.filter(function (p) { return p.category === panel.activeCategory })
     }
+    onItemsForCategoryChanged: lookup.setItems(panel.itemsForCategory)
 
+    // Live scan path: code not in the catalog goes to the engine (preserves scanner behavior).
     function submitSearch() {
         var t = searchField.text.trim()
         if (t === "") return
@@ -60,9 +69,28 @@ Item {
         searchField.text = ""
     }
     function pick(p) {
+        if (!p || !p.id) return
         PosEngineBridge.addLine(p.id, "1")
         searchField.text = ""
         searchField.forceActiveFocus()
+    }
+
+    // ── The ranked-lookup engine (C++) + reusable key-routing ────────────────────
+    LookupController {
+        id: lookup
+        searchKeys: ["name", "sku", "barcode"]   // "all" scope; name is primary (drives word-starts)
+        barcodeKey: "barcode"                     // "barcode" scope
+        scope: panel.scope
+    }
+    LookupKeys {
+        id: keys
+        controller: lookup
+        field: searchField
+        list: listView
+        onPicked: (item) => panel.pick(item)
+        onSubmitted: (text) => panel.submitSearch()   // no catalog match → live engine scan
+        onAdvance: searchField.forceActiveFocus()      // Items has no next field; stay home
+        // onEscaped: panel is already home — nothing to close.
     }
 
     ColumnLayout {
@@ -90,8 +118,10 @@ Item {
                     border.color: searchField.activeFocus ? Theme.accent : Theme.border
                     border.width: searchField.activeFocus ? 2 : 1
                 }
-                Keys.onReturnPressed: panel.submitSearch()
-                Keys.onEnterPressed: panel.submitSearch()
+                // The field is the source of typed text; push it into the ranked controller.
+                onTextChanged: lookup.searchText = text
+                // All field key behavior (Enter/Tab/Down/Esc) routes through the reference impl.
+                Keys.onPressed: (event) => keys.handleFieldKey(event)
             }
 
             // Scope toggle: list-search icon = "all" (sku+name+barcode); barcode icon =
@@ -179,48 +209,60 @@ Item {
             }
         }
 
-        // ── Quick-keys: LIST model (dense, keyboard/scanner) ─────────────────────
+        // ── Quick-keys: LIST model (dense, keyboard/scanner) — the keyboard-first view ──
         ListView {
             id: listView
             visible: panel.catalogMode === "list"
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
-            model: panel.filtered
+            model: lookup                              // the ranked + filtered controller
+            currentIndex: lookup.currentIndex          // highlight is list-state, bound to the controller
             spacing: 1
+            keyNavigationEnabled: false                // navigation is routed via LookupKeys, not Qt defaults
+            // Keep the highlighted row on-screen when the controller moves it (arrows/page/refilter).
+            onCurrentIndexChanged: if (currentIndex >= 0) positionViewAtIndex(currentIndex, ListView.Contain)
+            // Type-to-refine + arrow/Enter/Tab while the table has focus all route through the reference impl.
+            Keys.onPressed: (event) => keys.handleTableKey(event)
             delegate: ItemDelegate {
                 id: lrow
-                required property var modelData
+                required property var item              // the "item" role = the catalog payload map
+                required property int index
                 width: ListView.view ? ListView.view.width : 0
                 height: 40
-                onClicked: panel.pick(lrow.modelData)
+                readonly property bool current: ListView.isCurrentItem
+                onClicked: { lookup.setCurrentIndex(index); panel.pick(lrow.item) }
                 contentItem: RowLayout {
                     spacing: Theme.gap
                     ColumnLayout {
                         Layout.fillWidth: true
                         spacing: 0
-                        Text { text: lrow.modelData.name; color: Theme.text; font.family: Theme.fontFamily; font.pixelSize: Theme.fontBody; elide: Text.ElideRight; Layout.fillWidth: true }
-                        Text { text: lrow.modelData.sku + " · " + lrow.modelData.hsn + " · " + lrow.modelData.gst + "%"; color: Theme.textMuted; font.family: Theme.fontFamily; font.pixelSize: Theme.fontSmall }
+                        Text { text: lrow.item.name; color: lrow.current ? Theme.selectionText : Theme.text; font.family: Theme.fontFamily; font.pixelSize: Theme.fontBody; elide: Text.ElideRight; Layout.fillWidth: true }
+                        Text { text: lrow.item.sku + " · " + lrow.item.hsn + " · " + lrow.item.gst + "%"; color: lrow.current ? Theme.selectionText : Theme.textMuted; font.family: Theme.fontFamily; font.pixelSize: Theme.fontSmall }
                     }
-                    Text { text: lrow.modelData.price; color: Theme.text; font.family: Theme.monoFamily; font.pixelSize: Theme.fontBody }
+                    Text { text: lrow.item.price; color: lrow.current ? Theme.selectionText : Theme.text; font.family: Theme.monoFamily; font.pixelSize: Theme.fontBody }
                 }
-                background: Rectangle { color: lrow.hovered ? Theme.surfaceAlt : "transparent"; radius: Theme.radiusSmall }
+                // Highlight = current row (keyboard) first, then hover (mouse). Visible in both themes.
+                background: Rectangle {
+                    radius: Theme.radiusSmall
+                    color: lrow.current ? Theme.selectionBg : (lrow.hovered ? Theme.surfaceAlt : "transparent")
+                }
             }
         }
 
-        // ── Quick-keys: GRID model (≥64px touch tiles) ───────────────────────────
+        // ── Quick-keys: GRID model (≥64px touch tiles) — same controller, touch-first ──
         GridView {
             id: gridView
             visible: panel.catalogMode === "grid"
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
-            model: panel.filtered
+            model: lookup
             cellWidth: Math.max(Theme.touchMin + Theme.gap, width / Math.max(1, Math.floor(width / (Theme.touchMin + Theme.gap))))
             cellHeight: Theme.touchMin + Theme.gap
             delegate: Item {
                 id: tile
-                required property var modelData
+                required property var item
                 width: gridView.cellWidth
                 height: gridView.cellHeight
                 Rectangle {
@@ -236,10 +278,10 @@ Item {
                         anchors.fill: parent
                         anchors.margins: Theme.unit
                         spacing: 2
-                        Text { text: tile.modelData.name; color: Theme.text; font.family: Theme.fontFamily; font.pixelSize: Theme.fontSmall; wrapMode: Text.WordWrap; maximumLineCount: 2; elide: Text.ElideRight; Layout.fillWidth: true; Layout.fillHeight: true }
-                        Text { text: tile.modelData.price; color: Theme.textMuted; font.family: Theme.monoFamily; font.pixelSize: Theme.fontSmall }
+                        Text { text: tile.item.name; color: Theme.text; font.family: Theme.fontFamily; font.pixelSize: Theme.fontSmall; wrapMode: Text.WordWrap; maximumLineCount: 2; elide: Text.ElideRight; Layout.fillWidth: true; Layout.fillHeight: true }
+                        Text { text: tile.item.price; color: Theme.textMuted; font.family: Theme.monoFamily; font.pixelSize: Theme.fontSmall }
                     }
-                    TapHandler { id: tileTap; onTapped: panel.pick(tile.modelData) }
+                    TapHandler { id: tileTap; onTapped: panel.pick(tile.item) }
                 }
             }
         }
@@ -247,7 +289,7 @@ Item {
         // Deferred-data note (kept honest while the catalog is the in-shell demo).
         Text {
             Layout.fillWidth: true
-            visible: panel.filtered.length === 0
+            visible: lookup.count === 0
             text: qsTr("No matches in the demo catalog. (Live catalog/search pending engine contract.)")
             color: Theme.textMuted
             font.family: Theme.fontFamily; font.pixelSize: Theme.fontSmall

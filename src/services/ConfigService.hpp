@@ -55,6 +55,10 @@ class ConfigService : public QObject {
     // ── Suspend/resume (UX §10) — display/UX only; the engine enforces expiry ──
     // Duration string (e.g. "24h"); empty means the engine's end-of-day default.
     Q_PROPERTY(QString heldCartExpiry READ heldCartExpiry NOTIFY changed)
+    // ── Appearance (SHELL_KEYBOARD_LOOKUP brief, Part 2) — the configurable default theme.
+    // "light" | "dark"; Theme.qml binds its initial mode to this. A live toggle in the UI
+    // detaches from this, so a manual switch is not overridden by a config rehydrate.
+    Q_PROPERTY(QString themeMode READ themeMode NOTIFY changed)
 
 public:
     explicit ConfigService(QObject* parent = nullptr);
@@ -73,6 +77,7 @@ public:
     [[nodiscard]] bool restockDefault() const { return restockDefault_; }
     [[nodiscard]] bool allowPartialReturn() const { return allowPartialReturn_; }
     [[nodiscard]] QString heldCartExpiry() const { return heldCartExpiry_; }
+    [[nodiscard]] QString themeMode() const { return themeMode_; }
 
 public slots:
     // Hydrate from an engine ConfigUpdated event (relayed by PosEngineBridge, wired
@@ -89,6 +94,12 @@ public slots:
                      bool restockDefault = false, bool allowPartialReturn = false,
                      const QString& heldCartExpiry = QString(),
                      const QStringList& payoutCategories = QStringList());
+
+    // Appearance default (SHELL_KEYBOARD_LOOKUP brief, Part 2). Kept OFF the wired
+    // ConfigUpdated arm (applyConfig stays arity-matched to the bridge signal — no contract
+    // change). Theme.qml binds its initial mode to themeMode; this slot lets a future
+    // appearance setting / settings UI change the configured default. Idempotent.
+    void setThemeMode(const QString& mode);
 
 signals:
     void changed();
@@ -109,6 +120,7 @@ private:
     bool restockDefault_ = false;
     bool allowPartialReturn_ = false;
     QString heldCartExpiry_;  // duration string e.g. "24h"; empty → engine end-of-day default
+    QString themeMode_ = QStringLiteral("light");  // configurable default appearance; POS = light
 };
 
 }  // namespace blissmont::services

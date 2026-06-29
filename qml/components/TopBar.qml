@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import Blissmont.Shell
 
@@ -52,6 +53,32 @@ Rectangle {
         }
 
         Item { Layout.fillWidth: true }
+
+        // ── Theme toggle (live light/dark switch, no restart) ─────────────────
+        AbstractButton {
+            id: themeBtn
+            implicitWidth: Theme.iconButton
+            implicitHeight: Theme.iconButton
+            hoverEnabled: true
+            onClicked: Theme.toggle()
+            contentItem: Text {
+                text: Theme.isDark ? "☀" : "☾"   // sun → go light; moon → go dark
+                color: Theme.text
+                font.pixelSize: Theme.fontBody
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+            }
+            background: Rectangle {
+                radius: Theme.radius
+                color: themeBtn.hovered ? Theme.surfaceAlt : "transparent"
+                border.color: themeBtn.hovered ? Theme.accent : Theme.border
+            }
+            ToolTip.text: Theme.isDark ? qsTr("Switch to light theme")
+                                       : qsTr("Switch to dark theme")
+            ToolTip.visible: hovered
+            ToolTip.delay: 300
+        }
+        Rectangle { Layout.preferredWidth: 1; Layout.preferredHeight: 18; color: Theme.border }
 
         // ── Shift state + connection (right) ──────────────────────────────────
         Text {
