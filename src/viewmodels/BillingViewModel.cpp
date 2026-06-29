@@ -1,6 +1,8 @@
 // viewmodels/BillingViewModel.cpp — see BillingViewModel.hpp.
 #include "viewmodels/BillingViewModel.hpp"
 
+#include "core/Format.hpp"
+
 namespace blissmont::viewmodels {
 
 BillingViewModel::BillingViewModel(QObject* parent) : QObject(parent) {}
@@ -10,6 +12,16 @@ void BillingViewModel::setBridge(blissmont::bridge::PosEngineBridge* bridge) {
     bridge_ = bridge;
     wireBridge();
     emit bridgeChanged();
+}
+
+void BillingViewModel::setConfig(blissmont::services::ConfigService* config) {
+    if (config_ == config) return;
+    config_ = config;
+    emit configChanged();
+}
+
+QString BillingViewModel::currencySymbol() const {
+    return config_ ? config_->currencySymbol() : QStringLiteral("₹");
 }
 
 void BillingViewModel::wireBridge() {
@@ -23,9 +35,14 @@ void BillingViewModel::wireBridge() {
     });
     connect(bridge_, &B::orderSettled, this,
             [this](const QString& receiptNo, bool provisional, const QString& total) {
+                // Route the engine's exact decimal string through the one formatter — the
+                // status line must never show raw precision ("1003.0000000000").
+                const QString amount =
+                    currencySymbol() +
+                    QString::fromStdString(blissmont::core::numfmt::money(total.toStdString()));
                 setStatus(provisional
-                              ? QStringLiteral("Settled (offline) %1 — %2").arg(receiptNo, total)
-                              : QStringLiteral("Settled %1 — %2").arg(receiptNo, total));
+                              ? QStringLiteral("Settled (offline) %1 — %2").arg(receiptNo, amount)
+                              : QStringLiteral("Settled %1 — %2").arg(receiptNo, amount));
             });
 }
 

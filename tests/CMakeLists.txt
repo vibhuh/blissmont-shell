@@ -6,6 +6,7 @@ find_package(GTest CONFIG REQUIRED)
 qt_add_executable(shell_unit_tests
   unit/main.cpp
   unit/MoneyTest.cpp
+  unit/FormatTest.cpp
   unit/CartLineModelTest.cpp
   unit/BillingViewModelTest.cpp
   unit/LookupControllerTest.cpp

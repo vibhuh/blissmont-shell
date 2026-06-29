@@ -19,7 +19,6 @@ Item {
     property string amountReceived: "0.00"
     property string changeDue: "0.00"
     property bool   provisional: false
-    readonly property string sym: ConfigService.currencySymbol
 
     signal dismissed()
 
@@ -117,10 +116,10 @@ Item {
                 rowSpacing: Theme.unit
 
                 Text { text: qsTr("Total"); color: Theme.textMuted; font.family: Theme.fontFamily; font.pixelSize: Theme.fontBody }
-                Text { text: overlay.sym + overlay.total; color: Theme.text; font.family: Theme.monoFamily; font.pixelSize: Theme.fontBody; Layout.fillWidth: true; horizontalAlignment: Text.AlignRight }
+                Text { text: Format.money(overlay.total); color: Theme.text; font.family: Theme.monoFamily; font.pixelSize: Theme.fontBody; Layout.fillWidth: true; horizontalAlignment: Text.AlignRight }
 
                 Text { text: qsTr("Received"); color: Theme.textMuted; font.family: Theme.fontFamily; font.pixelSize: Theme.fontBody }
-                Text { text: overlay.sym + overlay.amountReceived; color: Theme.text; font.family: Theme.monoFamily; font.pixelSize: Theme.fontBody; Layout.fillWidth: true; horizontalAlignment: Text.AlignRight }
+                Text { text: Format.money(overlay.amountReceived); color: Theme.text; font.family: Theme.monoFamily; font.pixelSize: Theme.fontBody; Layout.fillWidth: true; horizontalAlignment: Text.AlignRight }
 
                 Text {
                     text: qsTr("Change")
@@ -131,14 +130,14 @@ Item {
                 }
                 Text {
                     id: changeValue
-                    text: overlay.sym + overlay.changeDue
+                    text: Format.money(overlay.changeDue)
                     color: Theme.ok
                     font.family: Theme.monoFamily
                     font.pixelSize: Theme.fontLarge
                     Layout.fillWidth: true
                     horizontalAlignment: Text.AlignRight
                     // Hide the change row for an exact tender (no change due).
-                    visible: overlay.changeDue !== "" && overlay.changeDue !== "0.00"
+                    visible: Format.money(overlay.changeDue) !== Format.money("0")
                 }
             }
 

@@ -143,7 +143,7 @@ Item {
                             elide: Text.ElideRight
                         }
                         Text {
-                            text: billRow.total
+                            text: Format.money(billRow.total)
                             color: Theme.text
                             font.family: Theme.monoFamily
                             font.pixelSize: Theme.fontBody
@@ -204,14 +204,14 @@ Item {
                     spacing: Theme.unit
                     Text {
                         Layout.fillWidth: true
-                        text: lineRow.qty + "  ×  " + lineRow.description
+                        text: Format.qty(lineRow.qty) + "  ×  " + lineRow.description
                         color: Theme.text
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontBody
                         elide: Text.ElideRight
                     }
                     Text {
-                        text: lineRow.lineTotal
+                        text: Format.money(lineRow.lineTotal)
                         color: Theme.text
                         font.family: Theme.monoFamily
                         font.pixelSize: Theme.fontBody
@@ -238,7 +238,7 @@ Item {
                         elide: Text.ElideRight
                     }
                     Text {
-                        text: payRow.amount
+                        text: Format.money(payRow.amount)
                         color: Theme.textMuted
                         font.family: Theme.monoFamily
                         font.pixelSize: Theme.fontBody
@@ -253,11 +253,11 @@ Item {
                 columnSpacing: Theme.gap
                 rowSpacing: 2
                 Text { text: qsTr("Subtotal"); color: Theme.textMuted; font.family: Theme.fontFamily; font.pixelSize: Theme.fontBody }
-                Text { text: PosEngineBridge.billDetail.subtotal || "0.00"; color: Theme.text; font.family: Theme.monoFamily; font.pixelSize: Theme.fontBody; Layout.fillWidth: true; horizontalAlignment: Text.AlignRight }
+                Text { text: Format.money(PosEngineBridge.billDetail.subtotal); color: Theme.text; font.family: Theme.monoFamily; font.pixelSize: Theme.fontBody; Layout.fillWidth: true; horizontalAlignment: Text.AlignRight }
                 Text { text: qsTr("Tax"); color: Theme.textMuted; font.family: Theme.fontFamily; font.pixelSize: Theme.fontBody }
-                Text { text: PosEngineBridge.billDetail.taxTotal || "0.00"; color: Theme.text; font.family: Theme.monoFamily; font.pixelSize: Theme.fontBody; Layout.fillWidth: true; horizontalAlignment: Text.AlignRight }
+                Text { text: Format.money(PosEngineBridge.billDetail.taxTotal); color: Theme.text; font.family: Theme.monoFamily; font.pixelSize: Theme.fontBody; Layout.fillWidth: true; horizontalAlignment: Text.AlignRight }
                 Text { text: qsTr("Total"); color: Theme.textMuted; font.family: Theme.fontFamily; font.pixelSize: Theme.fontLarge }
-                Text { text: PosEngineBridge.billDetail.total || "0.00"; color: Theme.text; font.family: Theme.monoFamily; font.pixelSize: Theme.fontLarge; Layout.fillWidth: true; horizontalAlignment: Text.AlignRight }
+                Text { text: Format.money(PosEngineBridge.billDetail.total); color: Theme.text; font.family: Theme.monoFamily; font.pixelSize: Theme.fontLarge; Layout.fillWidth: true; horizontalAlignment: Text.AlignRight }
             }
 
             // Actions on the recalled bill: reprint (DUPLICATE), start return, back.

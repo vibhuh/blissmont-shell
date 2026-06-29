@@ -14,6 +14,7 @@ blissmont_add_proto_library(shell_proto
 # tests instantiate those same C++ classes directly and ignore QML entirely.
 qt_add_library(shell STATIC
   core/Money.cpp            core/Money.hpp
+  core/Format.cpp           core/Format.hpp
   core/Result.hpp
   bridge/PosEngineBridge.cpp        bridge/PosEngineBridge.hpp
   models/CartLineModel.cpp          models/CartLineModel.hpp
@@ -32,6 +33,7 @@ qt_add_library(shell STATIC
   viewmodels/PayoutViewModel.cpp    viewmodels/PayoutViewModel.hpp
   services/ConnectionService.cpp    services/ConnectionService.hpp
   services/ConfigService.cpp        services/ConfigService.hpp
+  services/FormatService.cpp        services/FormatService.hpp
 )
 
 # The Qt-generated <module>_qmltyperegistrations.cpp includes each QML_ELEMENT type's

@@ -12,7 +12,6 @@ import Blissmont.Shell
 Item {
     id: panel
     signal done()
-    readonly property string sym: ConfigService.currencySymbol
     property string statusMessage: ""
 
     function record() {
@@ -26,7 +25,7 @@ Item {
         target: PosEngineBridge
         function onCashMovementRecorded(movementId, type, amount) {
             if (type !== "cash_in") return
-            panel.statusMessage = qsTr("Cash in recorded: %1%2").arg(panel.sym).arg(amount)
+            panel.statusMessage = qsTr("Cash in recorded: %1").arg(Format.money(amount))
             amountField.clear()
             reasonField.clear()
         }

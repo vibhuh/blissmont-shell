@@ -115,7 +115,7 @@ Item {
                             elide: Text.ElideRight
                         }
                         Text {
-                            text: holdRow.total
+                            text: Format.money(holdRow.total)
                             color: Theme.text
                             font.family: Theme.monoFamily
                             font.pixelSize: Theme.fontBody

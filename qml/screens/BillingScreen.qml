@@ -95,6 +95,7 @@ Item {
     BillingViewModel {
         id: vm
         bridge: PosEngineBridge
+        config: ConfigService   // currency symbol for the settle status line
     }
 
     ColumnLayout {

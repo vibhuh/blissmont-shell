@@ -17,10 +17,11 @@ Rectangle {
     border.color: Theme.border
 
     readonly property var s: PosEngineBridge.summary
-    readonly property string sym: ConfigService.currencySymbol
 
-    function amt(v) { return (v && v !== "") ? v : "0.00" }
-    function neg(v) { return (v && v !== "" && v !== "0.00") ? "−" + v : amt(v) }
+    // All amounts route through the one formatter (Phase 1) — grouped, 2-dp, ₹ symbol.
+    // A deduction (discount) shows as a negative; the formatter applies its own sign.
+    function amt(v) { return Format.money(v) }
+    function neg(v) { return (v && v !== "" && v !== "0.00") ? "−" + Format.money(v) : Format.money(v) }
 
     component Cell: RowLayout {
         property string label: ""
@@ -76,7 +77,8 @@ Rectangle {
                 Cell { visible: totals.s.taxInterstate;  label: qsTr("IGST"); value: totals.amt(totals.s.igst) }
                 // Keep the column height even between intra (2 rows) and inter (1 row).
                 Item { visible: totals.s.taxInterstate; Layout.fillWidth: true; Layout.preferredHeight: Theme.fontBody + Theme.unit }
-                Cell { label: qsTr("Round off"); value: totals.neg(totals.s.roundOff); valueColor: Theme.textMuted }
+                // Round off is a signed adjustment (+/−); show the engine's actual sign.
+                Cell { label: qsTr("Round off"); value: totals.amt(totals.s.roundOff); valueColor: Theme.textMuted }
             }
         }
 
@@ -89,7 +91,7 @@ Rectangle {
             Text {
                 text: qsTr("%1 items · %2 units")
                         .arg(totals.s.itemCount)
-                        .arg(totals.amt(totals.s.unitCount))
+                        .arg(Format.qty(totals.s.unitCount))
                 color: Theme.textMuted
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSmall
@@ -102,7 +104,7 @@ Rectangle {
                 font.pixelSize: Theme.fontBody
             }
             Text {
-                text: totals.sym + (totals.s.total && totals.s.total !== "" ? totals.s.total : "0.00")
+                text: Format.money(totals.s.total)
                 color: Theme.text
                 font.family: Theme.monoFamily
                 font.pixelSize: Theme.fontTotal

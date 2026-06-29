@@ -37,6 +37,15 @@ ApplicationWindow {
     // re-pushes the snapshot, so the UI rehydrates with no re-sync logic here (spec §4).
     Component.onCompleted: PosEngineBridge.connectToEngine()
 
+    // The one formatting standard (refinement brief, Phase 1): keep the Format singleton's
+    // currency symbol in lockstep with the configured one, so every formatted amount across
+    // the UI tracks a config push with no other wiring.
+    Binding {
+        target: Format
+        property: "currencySymbol"
+        value: ConfigService.currencySymbol
+    }
+
     // ── Frozen keymap (spec action bar). Each maps to BillingScreen.doAction, the same
     //    handler the on-screen icon buttons call, so button and key stay in lockstep. ──
     Shortcut { sequences: ["F3"];     onActivated: billing.doAction("clear") }    // Void

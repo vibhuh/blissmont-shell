@@ -24,7 +24,9 @@ Item {
     function selectMethod(row) {
         root.selectedMethod = row.method
         root.selectedRefMode = row.referenceMode
-        amountField.text = PosEngineBridge.summary.balanceDue   // default: tender the remaining
+        // Default: tender the remaining balance. Plain 2-dp (no symbol/grouping) so the
+        // field stays engine-parseable while never showing raw precision.
+        amountField.text = Format.plain(PosEngineBridge.summary.balanceDue)
         referenceField.text = ""
         if (root.selectedRefMode !== "none")
             referenceField.forceActiveFocus()
@@ -165,7 +167,7 @@ Item {
                     elide: Text.ElideRight
                 }
                 Text {
-                    text: tenderRow.amount
+                    text: Format.money(tenderRow.amount)
                     color: Theme.text
                     font.family: Theme.monoFamily
                     font.pixelSize: Theme.fontBody
@@ -184,13 +186,13 @@ Item {
             columnSpacing: Theme.gap
             rowSpacing: Theme.unit
             Text { text: qsTr("Total");     color: Theme.textMuted; font.family: Theme.fontFamily; font.pixelSize: Theme.fontBody }
-            Text { text: PosEngineBridge.summary.total || "0.00"; color: Theme.text; font.family: Theme.monoFamily; font.pixelSize: Theme.fontBody; Layout.alignment: Qt.AlignRight; Layout.fillWidth: true; horizontalAlignment: Text.AlignRight }
+            Text { text: Format.money(PosEngineBridge.summary.total); color: Theme.text; font.family: Theme.monoFamily; font.pixelSize: Theme.fontBody; Layout.alignment: Qt.AlignRight; Layout.fillWidth: true; horizontalAlignment: Text.AlignRight }
             Text { text: qsTr("Tendered");  color: Theme.textMuted; font.family: Theme.fontFamily; font.pixelSize: Theme.fontBody }
-            Text { text: PosEngineBridge.summary.amountTendered || "0.00"; color: Theme.text; font.family: Theme.monoFamily; font.pixelSize: Theme.fontBody; Layout.fillWidth: true; horizontalAlignment: Text.AlignRight }
+            Text { text: Format.money(PosEngineBridge.summary.amountTendered); color: Theme.text; font.family: Theme.monoFamily; font.pixelSize: Theme.fontBody; Layout.fillWidth: true; horizontalAlignment: Text.AlignRight }
             Text { text: qsTr("Balance");   color: Theme.textMuted; font.family: Theme.fontFamily; font.pixelSize: Theme.fontBody }
-            Text { text: PosEngineBridge.summary.balanceDue || "0.00"; color: Theme.warn; font.family: Theme.monoFamily; font.pixelSize: Theme.fontLarge; Layout.fillWidth: true; horizontalAlignment: Text.AlignRight }
-            Text { text: qsTr("Change");    color: Theme.textMuted; font.family: Theme.fontFamily; font.pixelSize: Theme.fontBody; visible: changeText.text !== "0.00" && changeText.text !== "" }
-            Text { id: changeText; text: PosEngineBridge.summary.changeDue || "0.00"; color: Theme.ok; font.family: Theme.monoFamily; font.pixelSize: Theme.fontBody; visible: text !== "0.00" && text !== ""; Layout.fillWidth: true; horizontalAlignment: Text.AlignRight }
+            Text { text: Format.money(PosEngineBridge.summary.balanceDue); color: Theme.warn; font.family: Theme.monoFamily; font.pixelSize: Theme.fontLarge; Layout.fillWidth: true; horizontalAlignment: Text.AlignRight }
+            Text { text: qsTr("Change");    color: Theme.textMuted; font.family: Theme.fontFamily; font.pixelSize: Theme.fontBody; visible: changeText.visible }
+            Text { id: changeText; text: Format.money(PosEngineBridge.summary.changeDue); color: Theme.ok; font.family: Theme.monoFamily; font.pixelSize: Theme.fontBody; visible: Format.money(PosEngineBridge.summary.changeDue) !== Format.money("0"); Layout.fillWidth: true; horizontalAlignment: Text.AlignRight }
         }
 
         Button {

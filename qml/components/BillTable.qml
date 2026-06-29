@@ -125,22 +125,19 @@ Rectangle {
                                 text: {
                                     var parts = []
                                     if (row.hsn !== "") parts.push(row.hsn)
-                                    // taxRate arrives as a FRACTION (e.g. "0.05"); show it as a
-                                    // percent ("5%"). Round to drop float noise / trailing zeros.
-                                    if (row.taxRate !== "") {
-                                        var pct = parseFloat(row.taxRate) * 100
-                                        if (!isNaN(pct)) parts.push((Math.round(pct * 100) / 100) + "%")
-                                    }
+                                    // taxRate arrives as a FRACTION (e.g. "0.05"); the one
+                                    // formatter renders it as a percent ("5.00%").
+                                    if (row.taxRate !== "") parts.push(Format.taxRate(row.taxRate))
                                     var base = parts.join(" · ")
                                     if (row.discounted)
-                                        base = (base ? base + "   " : "") + qsTr("less %1").arg(row.discount)
+                                        base = (base ? base + "   " : "") + qsTr("less %1").arg(Format.money(row.discount))
                                     return base
                                 }
                             }
                         }
 
                         Text {
-                            text: row.qty
+                            text: Format.qty(row.qty)
                             color: Theme.text
                             Layout.preferredWidth: table.wQty
                             horizontalAlignment: Text.AlignRight
@@ -148,7 +145,7 @@ Rectangle {
                             verticalAlignment: Text.AlignVCenter
                         }
                         Text {
-                            text: row.unitPrice
+                            text: Format.money(row.unitPrice)
                             color: row.priceOverridden ? Theme.accent : Theme.text
                             Layout.preferredWidth: table.wRate
                             horizontalAlignment: Text.AlignRight
@@ -156,7 +153,7 @@ Rectangle {
                             verticalAlignment: Text.AlignVCenter
                         }
                         Text {
-                            text: row.lineTotal
+                            text: Format.money(row.lineTotal)
                             color: Theme.text
                             Layout.preferredWidth: table.wAmount
                             horizontalAlignment: Text.AlignRight
@@ -206,7 +203,7 @@ Rectangle {
                                         onClicked: PosEngineBridge.setQty(row.lineNo, table.stepQty(row.qty, -1))
                                     }
                                     Text {
-                                        text: row.qty; color: Theme.text
+                                        text: Format.qty(row.qty); color: Theme.text
                                         font.family: Theme.monoFamily; font.pixelSize: Theme.fontBody
                                         horizontalAlignment: Text.AlignHCenter
                                         Layout.minimumWidth: 40
@@ -250,7 +247,8 @@ Rectangle {
                                 TextField {
                                     id: discField
                                     Layout.preferredWidth: 90
-                                    text: row.discounted ? row.discount : ""
+                                    // Editable; engine parses a bare decimal, so trim raw precision.
+                                    text: row.discounted ? Format.plain(row.discount) : ""
                                     placeholderText: qsTr("0.00")
                                     font.family: Theme.monoFamily; font.pixelSize: Theme.fontBody
                                     color: Theme.text; placeholderTextColor: Theme.textMuted
@@ -269,7 +267,7 @@ Rectangle {
                                     id: priceField
                                     Layout.preferredWidth: 90
                                     text: ""
-                                    placeholderText: row.unitPrice
+                                    placeholderText: Format.plain(row.unitPrice)
                                     font.family: Theme.monoFamily; font.pixelSize: Theme.fontBody
                                     color: Theme.text; placeholderTextColor: Theme.textMuted
                                     inputMethodHints: Qt.ImhFormattedNumbersOnly

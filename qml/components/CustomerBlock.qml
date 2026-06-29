@@ -85,7 +85,7 @@ Rectangle {
             Column {
                 Text { text: qsTr("Disc"); color: Theme.textMuted; font.family: Theme.fontFamily; font.pixelSize: Theme.fontSmall; horizontalAlignment: Text.AlignRight; width: parent.width }
                 Text {
-                    text: (block.s.orderDiscount && block.s.orderDiscount !== "" ? block.s.orderDiscount : "0.00")
+                    text: Format.money(block.s.orderDiscount)
                     color: Theme.text
                     font.family: Theme.monoFamily
                     font.pixelSize: Theme.fontBody

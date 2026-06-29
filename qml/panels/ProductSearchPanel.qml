@@ -240,7 +240,7 @@ Item {
                         Text { text: lrow.item.name; color: lrow.current ? Theme.selectionText : Theme.text; font.family: Theme.fontFamily; font.pixelSize: Theme.fontBody; elide: Text.ElideRight; Layout.fillWidth: true }
                         Text { text: lrow.item.sku + " · " + lrow.item.hsn + " · " + lrow.item.gst + "%"; color: lrow.current ? Theme.selectionText : Theme.textMuted; font.family: Theme.fontFamily; font.pixelSize: Theme.fontSmall }
                     }
-                    Text { text: lrow.item.price; color: lrow.current ? Theme.selectionText : Theme.text; font.family: Theme.monoFamily; font.pixelSize: Theme.fontBody }
+                    Text { text: Format.money(lrow.item.price); color: lrow.current ? Theme.selectionText : Theme.text; font.family: Theme.monoFamily; font.pixelSize: Theme.fontBody }
                 }
                 // Highlight = current row (keyboard) first, then hover (mouse). Visible in both themes.
                 background: Rectangle {
@@ -279,7 +279,7 @@ Item {
                         anchors.margins: Theme.unit
                         spacing: 2
                         Text { text: tile.item.name; color: Theme.text; font.family: Theme.fontFamily; font.pixelSize: Theme.fontSmall; wrapMode: Text.WordWrap; maximumLineCount: 2; elide: Text.ElideRight; Layout.fillWidth: true; Layout.fillHeight: true }
-                        Text { text: tile.item.price; color: Theme.textMuted; font.family: Theme.monoFamily; font.pixelSize: Theme.fontSmall }
+                        Text { text: Format.money(tile.item.price); color: Theme.textMuted; font.family: Theme.monoFamily; font.pixelSize: Theme.fontSmall }
                     }
                     TapHandler { id: tileTap; onTapped: panel.pick(tile.item) }
                 }

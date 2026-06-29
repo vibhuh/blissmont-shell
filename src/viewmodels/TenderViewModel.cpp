@@ -1,6 +1,7 @@
 // viewmodels/TenderViewModel.cpp — see TenderViewModel.hpp.
 #include "viewmodels/TenderViewModel.hpp"
 
+#include "core/Format.hpp"
 #include "core/Money.hpp"
 
 namespace blissmont::viewmodels {
@@ -78,7 +79,11 @@ void TenderViewModel::removeTender(int tenderNo) {
 void TenderViewModel::complete() {
     if (!bridge_) return;
     if (!canComplete()) {
-        const QString due = bridge_->summary() ? bridge_->summary()->balanceDue() : QString();
+        const QString raw = bridge_->summary() ? bridge_->summary()->balanceDue() : QString();
+        const QString symbol =
+            config_ ? config_->currencySymbol() : QStringLiteral("₹");
+        const QString due =
+            symbol + QString::fromStdString(blissmont::core::numfmt::money(raw.toStdString()));
         setStatus(tr("Balance due: %1").arg(due));
         return;
     }
