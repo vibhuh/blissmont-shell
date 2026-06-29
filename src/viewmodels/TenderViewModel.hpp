@@ -29,6 +29,9 @@ class TenderViewModel : public QObject {
     // (tenderCompleteMode == "auto"); the panel uses it to decide whether to settle
     // without an explicit confirm. Policy lives in config, not hardcoded here.
     Q_PROPERTY(bool autoComplete READ autoComplete NOTIFY stateChanged)
+    // The primary (cash) payment path the calculator opens on: the enabled method named
+    // "cash", else the first enabled method. Empty only when no methods are configured.
+    Q_PROPERTY(QString primaryMethod READ primaryMethod NOTIFY stateChanged)
     Q_PROPERTY(QString statusMessage READ statusMessage NOTIFY statusMessageChanged)
 
 public:
@@ -42,7 +45,15 @@ public:
 
     [[nodiscard]] bool canComplete() const;
     [[nodiscard]] bool autoComplete() const;
+    [[nodiscard]] QString primaryMethod() const;
     [[nodiscard]] QString statusMessage() const { return statusMessage_; }
+
+    // Live CHANGE preview as the cashier types (Change = Received − bill Total). DISPLAY
+    // only — the engine computes the authoritative change at settle; this never touches a
+    // double (exact paise via core::Money) and is clamped at 0 (no negative "change" when
+    // short). Both inputs are rounded to 2 dp first so the engine's full-precision total
+    // string parses. Returns a bare decimal ("47.00"); the caller formats it.
+    Q_INVOKABLE QString changeDuePreview(const QString& received) const;
 
     // The per-method reference policy from config ("none" | "optional" | "required");
     // "none" if the method is unknown. QML uses it to show/require the reference field.
@@ -57,6 +68,14 @@ public:
     // Settle the bill. No-op (with a status message) unless canComplete.
     Q_INVOKABLE void complete();
 
+    // Calculator path (refinement brief, Phase 2): tender `amount` via `method`, then
+    // settle as soon as the engine reports the balance cleared — the keyboard-first
+    // "Enter completes the sale". Reference gating matches addTender (a required-but-blank
+    // reference blocks, with a status message, and does NOT arm completion). Underpayment
+    // just records the tender and waits (split): completion fires when the balance clears.
+    Q_INVOKABLE void tenderAndComplete(const QString& method, const QString& amount,
+                                       const QString& reference);
+
 signals:
     void bridgeChanged();
     void configChanged();
@@ -65,10 +84,15 @@ signals:
 
 private:
     void setStatus(const QString& message);
+    // Re-drive completion gating on each engine snapshot; fire the armed settle when the
+    // balance has cleared.
+    void onBalanceChanged();
 
     blissmont::bridge::PosEngineBridge* bridge_ = nullptr;
     blissmont::services::ConfigService* config_ = nullptr;
     QString statusMessage_;
+    // Armed by tenderAndComplete; settles on the next snapshot where canComplete is true.
+    bool completeArmed_ = false;
 };
 
 }  // namespace blissmont::viewmodels

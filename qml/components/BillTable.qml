@@ -195,18 +195,38 @@ Rectangle {
                                 Layout.fillWidth: true
                                 spacing: Theme.gap
 
-                                // Qty stepper: − n +
+                                // Qty: − [editable textbox] + — decimal entry for weighed
+                                // goods (1.250 kg, 0.750 L), numeric-keypad friendly, with
+                                // compact steppers beside it (Phase 2).
                                 RowLayout {
                                     spacing: Theme.unit
                                     Button {
                                         text: "−"; implicitWidth: 36
                                         onClicked: PosEngineBridge.setQty(row.lineNo, table.stepQty(row.qty, -1))
                                     }
-                                    Text {
-                                        text: Format.qty(row.qty); color: Theme.text
-                                        font.family: Theme.monoFamily; font.pixelSize: Theme.fontBody
+                                    TextField {
+                                        id: qtyField
+                                        text: Format.qty(row.qty)
+                                        Layout.preferredWidth: 64
                                         horizontalAlignment: Text.AlignHCenter
-                                        Layout.minimumWidth: 40
+                                        font.family: Theme.monoFamily; font.pixelSize: Theme.fontBody
+                                        color: Theme.text
+                                        inputMethodHints: Qt.ImhFormattedNumbersOnly
+                                        selectByMouse: true
+                                        // Commit on Enter / focus-out; skip a no-op so the
+                                        // engine isn't spammed when nothing changed.
+                                        onAccepted: qtyField.commitQty()
+                                        onEditingFinished: qtyField.commitQty()
+                                        function commitQty() {
+                                            var v = text.trim()
+                                            if (v !== "" && v !== Format.qty(row.qty))
+                                                PosEngineBridge.setQty(row.lineNo, v)
+                                        }
+                                        background: Rectangle {
+                                            color: Theme.surface
+                                            radius: Theme.radiusSmall
+                                            border.color: qtyField.activeFocus ? Theme.accent : Theme.border
+                                        }
                                     }
                                     Button {
                                         text: "+"; implicitWidth: 36
