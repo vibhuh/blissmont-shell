@@ -78,9 +78,14 @@ Item {
                 }
 
                 // Customer | Totals — two columns.
+                // maximumHeight hard-caps this row: its children set Layout.fillHeight,
+                // which makes the RowLayout inherit a fillHeight stretch that would
+                // otherwise override preferredHeight and starve the BillTable above to
+                // 0px. The cap keeps it a fixed bottom strip so BillTable fills the rest.
                 RowLayout {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 132
+                    Layout.maximumHeight: 132
                     spacing: Theme.gap
                     CustomerBlock {
                         Layout.fillWidth: true

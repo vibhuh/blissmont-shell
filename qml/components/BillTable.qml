@@ -125,7 +125,12 @@ Rectangle {
                                 text: {
                                     var parts = []
                                     if (row.hsn !== "") parts.push(row.hsn)
-                                    if (row.taxRate !== "") parts.push(row.taxRate + "%")
+                                    // taxRate arrives as a FRACTION (e.g. "0.05"); show it as a
+                                    // percent ("5%"). Round to drop float noise / trailing zeros.
+                                    if (row.taxRate !== "") {
+                                        var pct = parseFloat(row.taxRate) * 100
+                                        if (!isNaN(pct)) parts.push((Math.round(pct * 100) / 100) + "%")
+                                    }
                                     var base = parts.join(" · ")
                                     if (row.discounted)
                                         base = (base ? base + "   " : "") + qsTr("less %1").arg(row.discount)
