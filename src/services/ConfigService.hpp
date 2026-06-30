@@ -36,6 +36,9 @@ class ConfigService : public QObject {
     Q_PROPERTY(bool allowDiscounts READ allowDiscounts NOTIFY changed)
     Q_PROPERTY(QString tenderCompleteMode READ tenderCompleteMode NOTIFY changed)
     Q_PROPERTY(QString currencySymbol READ currencySymbol NOTIFY changed)
+    // Top-bar identity (contracts v1.6.0): store name + this terminal's register label.
+    Q_PROPERTY(QString storeName READ storeName NOTIFY changed)
+    Q_PROPERTY(QString registerName READ registerName NOTIFY changed)
     // Enabled tenders for the tender panel, sorted by sortOrder. Each entry is a
     // QVariantMap {method, displayName, hotkey, sortOrder, enabled, referenceMode}
     // (contracts v1.2.0). Disabled methods are dropped here — only tenderable
@@ -69,6 +72,8 @@ public:
     [[nodiscard]] bool allowDiscounts() const { return allowDiscounts_; }
     [[nodiscard]] QString tenderCompleteMode() const { return tenderCompleteMode_; }
     [[nodiscard]] QString currencySymbol() const { return currencySymbol_; }
+    [[nodiscard]] QString storeName() const { return storeName_; }
+    [[nodiscard]] QString registerName() const { return registerName_; }
     [[nodiscard]] QVariantList enabledPaymentMethods() const { return enabledPaymentMethods_; }
     [[nodiscard]] QStringList payoutCategories() const { return payoutCategories_; }
     [[nodiscard]] bool allowBlindReturn() const { return allowBlindReturn_; }
@@ -93,7 +98,9 @@ public slots:
                      const QString& returnRequiresAuth = QStringLiteral("never"),
                      bool restockDefault = false, bool allowPartialReturn = false,
                      const QString& heldCartExpiry = QString(),
-                     const QStringList& payoutCategories = QStringList());
+                     const QStringList& payoutCategories = QStringList(),
+                     const QString& storeName = QString(),
+                     const QString& registerName = QString());
 
     // Appearance default (SHELL_KEYBOARD_LOOKUP brief, Part 2). Kept OFF the wired
     // ConfigUpdated arm (applyConfig stays arity-matched to the bridge signal — no contract
@@ -112,6 +119,8 @@ private:
     bool allowDiscounts_ = true;
     QString tenderCompleteMode_ = QStringLiteral("confirm");
     QString currencySymbol_ = QStringLiteral("₹");  // ₹
+    QString storeName_;                             // top-bar store identity
+    QString registerName_;                          // top-bar register/counter label
     QVariantList enabledPaymentMethods_;            // enabled-only, sorted by sortOrder
     QStringList payoutCategories_;                  // payout category keys (display = key)
     bool allowBlindReturn_ = false;

@@ -4,15 +4,15 @@ import QtQuick.Layouts
 import Blissmont.Shell
 
 // components/TopBar.qml — zone 1 (spec layout): store · counter · bill# on the left,
-// online/offline + shift state on the right. Identity fields (store/counter/bill#/shift)
-// are not yet projected over the terminal contract, so they bind to properties the host
-// sets from what IS available and fall back to clearly-muted placeholders; the connection
-// indicator is live (ConnectionService). When store identity / shift state land on the
-// contract, point these properties at them — the layout does not change.
+// online/offline + shift state on the right. Identity is projected over the terminal
+// contract (R1.5, contracts v1.6.0): the host binds storeName + registerName from config,
+// billNo from the cart snapshot's next receipt number, and shiftState from the engine's
+// real shift state. Each falls back to a clearly-muted placeholder until projected; the
+// connection indicator is live (ConnectionService).
 Rectangle {
     id: bar
     property string storeName: ""
-    property string counterId: ""
+    property string registerName: ""
     property string billNo: ""
     property string shiftState: ""
     property bool online: false
@@ -39,7 +39,7 @@ Rectangle {
         }
         Text { text: "·"; color: Theme.border; font.pixelSize: Theme.fontBody }
         Text {
-            text: bar.counterId !== "" ? qsTr("Counter %1").arg(bar.counterId) : qsTr("Counter —")
+            text: bar.registerName !== "" ? bar.registerName : qsTr("Counter —")
             color: Theme.textMuted
             font.family: Theme.fontFamily
             font.pixelSize: Theme.fontBody

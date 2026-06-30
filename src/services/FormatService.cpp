@@ -17,7 +17,9 @@ QString Format::money(const QString& value) const {
     std::string m = core::numfmt::money(value.toStdString());
     const bool negative = !m.empty() && m.front() == '-';
     if (negative) m.erase(0, 1);
-    const QString body = currencySymbol_ + QString::fromStdString(m);
+    // The ONE money standard (R1.3): "<symbol> <grouped 2dp>" — a SPACE between the
+    // currency symbol and the value ("₹ 531.00"), so every amount on screen matches.
+    const QString body = currencySymbol_ + QStringLiteral(" ") + QString::fromStdString(m);
     return negative ? QString::fromUtf8("−") + body : body;  // U+2212 MINUS SIGN
 }
 

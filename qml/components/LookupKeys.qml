@@ -50,6 +50,21 @@ QtObject {
             keys.submitted(field ? field.text.trim() : "")
     }
 
+    // Enter/Tab while focus is IN the results table. Unlike the field path (which needs a
+    // query before it implies a selection — an empty field Enter is the live-scan fallback),
+    // being on a row in the table is an EXPLICIT choice: pick the HIGHLIGHTED row regardless
+    // of whether any search text was typed. This is what makes Quick-Keys (a browse list with
+    // no query) addable from the keyboard — the R1.2 gap. Falls back to submit only when there
+    // is genuinely no current row (empty list).
+    function _selectRowOrSubmit() {
+        if (controller) {
+            var it = controller.currentItem()
+            if (it && Object.keys(it).length > 0) { keys.picked(it); return true }
+        }
+        keys.submitted(field ? field.text.trim() : "")
+        return false
+    }
+
     // Keys while focus is in the SEARCH FIELD.
     function handleFieldKey(event) {
         switch (event.key) {
@@ -104,10 +119,10 @@ QtObject {
         case Qt.Key_End:      event.accepted = true; controller.moveEnd(); return
         case Qt.Key_Return:
         case Qt.Key_Enter:
-            event.accepted = true; _enterOrSubmit(); return
+            event.accepted = true; _selectRowOrSubmit(); return
         case Qt.Key_Tab:
         case Qt.Key_Backtab:
-            event.accepted = true; _enterOrSubmit(); keys.advance(); return
+            event.accepted = true; _selectRowOrSubmit(); keys.advance(); return
         case Qt.Key_Escape:
             // From the table, Esc returns focus to the field (does NOT close).
             event.accepted = true

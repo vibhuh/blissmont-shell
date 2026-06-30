@@ -31,6 +31,9 @@ class CartSummary : public QObject {
     Q_PROPERTY(bool taxInterstate READ taxInterstate NOTIFY changed)
     Q_PROPERTY(int itemCount READ itemCount NOTIFY changed)
     Q_PROPERTY(QString unitCount READ unitCount NOTIFY changed)
+    // Receipt number the next settle will assign — the bill being rung (top-bar
+    // identity, contracts v1.6.0). Empty until the engine projects it.
+    Q_PROPERTY(QString nextReceiptNo READ nextReceiptNo NOTIFY changed)
 
 public:
     explicit CartSummary(QObject* parent = nullptr);
@@ -52,6 +55,7 @@ public:
     [[nodiscard]] bool taxInterstate() const { return taxInterstate_; }
     [[nodiscard]] int itemCount() const { return itemCount_; }
     [[nodiscard]] QString unitCount() const { return unitCount_; }
+    [[nodiscard]] QString nextReceiptNo() const { return nextReceiptNo_; }
 
     void update(const blissmont::terminal::v1::CartUpdated& snapshot);
 
@@ -63,6 +67,7 @@ private:
     QString amountTendered_, balanceDue_, changeDue_;
     QString customerLabel_, status_;
     QString taxableValue_, cgst_, sgst_, igst_, roundOff_, unitCount_;
+    QString nextReceiptNo_;
     bool taxInterstate_ = false;
     int itemCount_ = 0;
 };

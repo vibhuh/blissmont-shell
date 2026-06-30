@@ -18,6 +18,19 @@ Item {
     // the orderSettled handler; gates the Print button (nothing to reprint until a sale completes).
     property string lastReceiptNo: ""
 
+    // Real shift state for the top bar (R1.5). Tracks the engine's ShiftStateChanged
+    // ("none" | "open" | "closed"); the label maps it to a cashier-facing string. The
+    // actual Begin-Day / open-shift workflow is a separate slice — this only projects
+    // the true state, never a hardcoded placeholder.
+    property string shiftStatus: ""
+    readonly property string shiftLabel: {
+        switch (screen.shiftStatus) {
+        case "open":   return qsTr("Shift open")
+        case "closed": return qsTr("Shift closed")
+        default:       return qsTr("No shift")
+        }
+    }
+
     readonly property bool cartActive: {
         var s = PosEngineBridge.summary.status
         return s === "active" || s === "tendering"
@@ -86,12 +99,14 @@ Item {
     //    holds the just-taken tender — capture received/change here, then show the confirmation.
     Connections {
         target: PosEngineBridge
-        function onOrderSettled(receiptNo, provisional, total) {
+        function onOrderSettled(receiptNo, provisional, total, received, change) {
             screen.lastReceiptNo = receiptNo
             saleComplete.receiptNo = receiptNo
             saleComplete.total = total
-            saleComplete.amountReceived = PosEngineBridge.summary.amountTendered
-            saleComplete.changeDue = PosEngineBridge.summary.changeDue
+            // R1.1: bind to the settle-time values carried ON the event (contracts v1.6.0),
+            // not the live cart summary the engine resets the instant after settling.
+            saleComplete.amountReceived = received
+            saleComplete.changeDue = change
             saleComplete.provisional = provisional
             screen.navState = "item"      // reset the right panel to product-search home
             screen.justCompleted = true   // status bar reads "Sale completed" briefly (Tier 3.3)
@@ -106,6 +121,8 @@ Item {
             screen.notify(qsTr("Z Report blocked — close the open shift first (%1)")
                           .arg(openShiftIds.length))
         }
+        // Project the engine's real shift state into the top bar (R1.5).
+        function onShiftStateChanged(shiftId, status) { screen.shiftStatus = status }
     }
 
     // The view-model for the scan/search home-state and transient status.
@@ -133,6 +150,12 @@ Item {
         // ── Zone 1: top bar ───────────────────────────────────────────────────
         TopBar {
             Layout.fillWidth: true
+            // Identity projected over the terminal contract (R1.5): store + register from
+            // config (v1.6.0), the live bill # from the cart snapshot, real shift state.
+            storeName: ConfigService.storeName
+            registerName: ConfigService.registerName
+            billNo: PosEngineBridge.summary.nextReceiptNo
+            shiftState: screen.shiftLabel
             online: ConnectionService.connected
             connectionText: ConnectionService.statusText
         }

@@ -135,7 +135,8 @@ void TenderViewModel::complete() {
         const QString symbol =
             config_ ? config_->currencySymbol() : QStringLiteral("₹");
         const QString due =
-            symbol + QString::fromStdString(blissmont::core::numfmt::money(raw.toStdString()));
+            symbol + QStringLiteral(" ") +
+            QString::fromStdString(blissmont::core::numfmt::money(raw.toStdString()));
         setStatus(tr("Balance due: %1").arg(due));
         return;
     }

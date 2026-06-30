@@ -93,7 +93,9 @@ void PosEngineBridge::applyEvent(const Event& evt) {
         case E::kOrderSettled:
             emit orderSettled(QString::fromStdString(evt.order_settled().receipt_no()),
                               evt.order_settled().provisional(),
-                              QString::fromStdString(evt.order_settled().total_str()));
+                              QString::fromStdString(evt.order_settled().total_str()),
+                              QString::fromStdString(evt.order_settled().received_str()),
+                              QString::fromStdString(evt.order_settled().change_str()));
             break;
         case E::kItemNotFound:
             emit itemNotFound(QString::fromStdString(evt.item_not_found().barcode()));
@@ -147,7 +149,9 @@ void PosEngineBridge::applyEvent(const Event& evt) {
                                cfg.restock_default(),
                                cfg.allow_partial_return(),
                                QString::fromStdString(cfg.held_cart_expiry()),
-                               payoutCategories);
+                               payoutCategories,
+                               QString::fromStdString(cfg.store_name()),
+                               QString::fromStdString(cfg.register_name()));
             break;
         }
         case E::kPayoutRecorded:

@@ -40,7 +40,7 @@ void BillingViewModel::wireBridge() {
                 // Route the engine's exact decimal string through the one formatter — the
                 // status line must never show raw precision ("1003.0000000000").
                 const QString amount =
-                    currencySymbol() +
+                    currencySymbol() + QStringLiteral(" ") +
                     QString::fromStdString(blissmont::core::numfmt::money(total.toStdString()));
                 setStatus(provisional
                               ? QStringLiteral("Settled (offline) %1 — %2").arg(receiptNo, amount)

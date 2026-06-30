@@ -108,7 +108,10 @@ public:
 
 signals:
     void connectionChanged();
-    void orderSettled(const QString& receiptNo, bool provisional, const QString& total);
+    // received/change carry the settle-time tender (contracts v1.6.0) so the post-settle
+    // confirmation binds to immutable values, not the live cart summary the engine resets.
+    void orderSettled(const QString& receiptNo, bool provisional, const QString& total,
+                      const QString& received, const QString& change);
     void itemNotFound(const QString& barcode);
     void commandRejected(const QString& code, const QString& message);
     void shiftStateChanged(const QString& shiftId, const QString& status);
@@ -130,7 +133,10 @@ signals:
                        bool allowBlindReturn, const QString& refundTenderMode,
                        const QString& returnRequiresAuth, bool restockDefault,
                        bool allowPartialReturn, const QString& heldCartExpiry,
-                       const QStringList& payoutCategories);
+                       const QStringList& payoutCategories,
+                       // Store + register identity for the top bar (contracts v1.6.0:
+                       // store_name already on the wire; register_name device-local).
+                       const QString& storeName, const QString& registerName);
     void authRequired(const QString& action, const QString& reason);
     // A payout was recorded (UX §12): the engine echoes the provisional/local payout id,
     // amount and category after RecordPayout. The shell surfaces this as the payout

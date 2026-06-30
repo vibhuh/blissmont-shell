@@ -255,7 +255,7 @@ Item {
                 selected: ListView.isCurrentItem
                 title: lrow.item.name
                 subtitle: lrow.item.sku + " · " + lrow.item.hsn + " · " + lrow.item.gst + "%"
-                rightValue: Format.currencySymbol + Format.amount(lrow.item.price)
+                rightValue: Format.money(lrow.item.price)
                 onClicked: { lookup.setCurrentIndex(lrow.index); panel.pick(lrow.item) }
             }
         }
@@ -289,7 +289,7 @@ Item {
                         anchors.margins: Theme.unit
                         spacing: 2
                         Text { text: tile.item.name; color: Theme.text; font.family: Theme.fontFamily; font.pixelSize: Theme.fontSmall; wrapMode: Text.WordWrap; maximumLineCount: 2; elide: Text.ElideRight; Layout.fillWidth: true; Layout.fillHeight: true }
-                        Text { text: Format.currencySymbol + Format.amount(tile.item.price); color: Theme.textMuted; font.family: Theme.monoFamily; font.pixelSize: Theme.fontSmall }
+                        Text { text: Format.money(tile.item.price); color: Theme.textMuted; font.family: Theme.monoFamily; font.pixelSize: Theme.fontSmall }
                     }
                     TapHandler { id: tileTap; onTapped: panel.pick(tile.item) }
                 }
