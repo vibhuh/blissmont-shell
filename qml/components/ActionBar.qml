@@ -95,6 +95,21 @@ Rectangle {
             opacity: btn.enabled ? 1.0 : 0.45
         }
 
+        // Visible shortcut badge (Tier 3.2): a muted Zoho-style hint in the top-right corner so
+        // the keyboard map is discoverable on the surface, not just in the tooltip.
+        Text {
+            visible: btn.shortcutHint !== ""
+            anchors.top: parent.top
+            anchors.right: parent.right
+            anchors.topMargin: Theme.spaceXs
+            anchors.rightMargin: Theme.unit
+            text: btn.shortcutHint
+            color: btn.fg
+            opacity: 0.55
+            font.family: Theme.monoFamily
+            font.pixelSize: 10
+        }
+
         // Tooltip: hover (desktop) + long-press (touch). The full label + shortcut live here.
         ToolTip.text: btn.shortcutHint !== "" ? btn.label + "   (" + btn.shortcutHint + ")"
                                               : btn.label

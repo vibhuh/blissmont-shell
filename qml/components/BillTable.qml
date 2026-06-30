@@ -334,14 +334,27 @@ Rectangle {
                 }
             }
 
-            // Empty state — boots here until the first scan/quick-key lands.
-            Text {
+            // Empty state — a confident "ready" treatment (Tier 3.5): the terminal is set,
+            // just waiting for the first item rather than nagging the cashier.
+            ColumnLayout {
                 anchors.centerIn: parent
                 visible: list.count === 0
-                text: qsTr("Scan an item to begin")
-                color: Theme.textMuted
-                font.family: Theme.fontFamily
-                font.pixelSize: Theme.fontBody
+                spacing: Theme.spaceXs
+                Text {
+                    Layout.alignment: Qt.AlignHCenter
+                    text: qsTr("Ready")
+                    color: Theme.text
+                    font.family: Theme.fontFamily
+                    font.pixelSize: Theme.fontMedium
+                    font.bold: true
+                }
+                Text {
+                    Layout.alignment: Qt.AlignHCenter
+                    text: qsTr("Scan a barcode or search to add an item")
+                    color: Theme.textMuted
+                    font.family: Theme.fontFamily
+                    font.pixelSize: Theme.fontBody
+                }
             }
         }
     }

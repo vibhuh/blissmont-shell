@@ -106,6 +106,8 @@ Item {
             TextField {
                 id: searchField
                 Layout.fillWidth: true
+                // A failed scan reports ON this field (Tier 3.3), not the status bar.
+                readonly property bool hasError: panel.vm && panel.vm.scanError !== ""
                 placeholderText: panel.scope === "barcode" ? qsTr("Scan barcode…")
                                                            : qsTr("Scan or search item…")
                 font.family: Theme.monoFamily
@@ -115,11 +117,18 @@ Item {
                 padding: Theme.unit
                 background: Rectangle {
                     color: Theme.bg; radius: Theme.radius
-                    border.color: searchField.activeFocus ? Theme.accent : Theme.border
-                    border.width: searchField.activeFocus ? 2 : 1
+                    // Error border wins; otherwise accent on focus, neutral at rest.
+                    border.color: searchField.hasError ? Theme.danger
+                                  : (searchField.activeFocus ? Theme.accent : Theme.border)
+                    border.width: (searchField.hasError || searchField.activeFocus) ? 2 : 1
                 }
                 // The field is the source of typed text; push it into the ranked controller.
-                onTextChanged: lookup.searchText = text
+                // Also mirror it into the view-model so the status bar can read a "Scanning…"
+                // state and any stale not-found hint clears the instant the cashier edits.
+                onTextChanged: {
+                    lookup.searchText = text
+                    if (panel.vm) panel.vm.scanText = text
+                }
                 // All field key behavior (Enter/Tab/Down/Esc) routes through the reference impl.
                 Keys.onPressed: (event) => keys.handleFieldKey(event)
             }
@@ -151,6 +160,18 @@ Item {
                 ToolTip.delay: 300
                 TapHandler { id: scopeLong; acceptedDevices: PointerDevice.TouchScreen; longPressThreshold: 0.5 }
             }
+        }
+
+        // Inline scan error (Tier 3.3): the "not found" hint lives at the field, in danger
+        // colour, and disappears the moment the cashier types again.
+        Text {
+            Layout.fillWidth: true
+            visible: panel.vm && panel.vm.scanError !== ""
+            text: panel.vm ? panel.vm.scanError : ""
+            color: Theme.danger
+            font.family: Theme.fontFamily
+            font.pixelSize: Theme.fontSmall
+            elide: Text.ElideRight
         }
 
         // ── Category chips (one mechanism; data per vertical) ────────────────────

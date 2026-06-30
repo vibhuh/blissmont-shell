@@ -28,7 +28,9 @@ void BillingViewModel::wireBridge() {
     if (!bridge_) return;
     using B = blissmont::bridge::PosEngineBridge;
     connect(bridge_, &B::itemNotFound, this, [this](const QString& barcode) {
-        setStatus(QStringLiteral("Item not found: %1").arg(barcode));
+        // A failed scan is a field-level validation error, not a terminal state — surface it
+        // ON the scan field (Tier 3.3), never in the status bar next to "Offline".
+        setScanError(QStringLiteral("Item not found: %1").arg(barcode));
     });
     connect(bridge_, &B::commandRejected, this, [this](const QString&, const QString& message) {
         setStatus(message);
@@ -49,6 +51,8 @@ void BillingViewModel::wireBridge() {
 void BillingViewModel::setScanText(const QString& text) {
     if (scanText_ == text) return;
     scanText_ = text;
+    // Editing the field dismisses any stale "not found" hint.
+    setScanError(QString());
     emit scanTextChanged();
 }
 
@@ -63,6 +67,12 @@ void BillingViewModel::setStatus(const QString& message) {
     if (statusMessage_ == message) return;
     statusMessage_ = message;
     emit statusMessageChanged();
+}
+
+void BillingViewModel::setScanError(const QString& message) {
+    if (scanError_ == message) return;
+    scanError_ = message;
+    emit scanErrorChanged();
 }
 
 }  // namespace blissmont::viewmodels

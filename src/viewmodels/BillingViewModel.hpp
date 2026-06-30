@@ -27,6 +27,10 @@ class BillingViewModel : public QObject {
     Q_PROPERTY(blissmont::services::ConfigService* config READ config WRITE setConfig NOTIFY configChanged)
     Q_PROPERTY(QString scanText READ scanText WRITE setScanText NOTIFY scanTextChanged)
     Q_PROPERTY(QString statusMessage READ statusMessage NOTIFY statusMessageChanged)
+    // Scan-field-scoped validation error (Tier 3.3): "Item not found" belongs ON the scan
+    // field (red border + inline hint), NOT in the terminal-state status bar. Cleared the
+    // moment the cashier edits the field.
+    Q_PROPERTY(QString scanError READ scanError NOTIFY scanErrorChanged)
 
 public:
     explicit BillingViewModel(QObject* parent = nullptr);
@@ -42,6 +46,8 @@ public:
 
     [[nodiscard]] QString statusMessage() const { return statusMessage_; }
 
+    [[nodiscard]] QString scanError() const { return scanError_; }
+
     // Scan-field-is-home law (UX §3): submit the current code, then clear so focus returns
     // to an empty scan field. A blank submit is a no-op.
     Q_INVOKABLE void submitScan();
@@ -51,9 +57,11 @@ signals:
     void configChanged();
     void scanTextChanged();
     void statusMessageChanged();
+    void scanErrorChanged();
 
 private:
     void setStatus(const QString& message);
+    void setScanError(const QString& message);
     void wireBridge();
     // The configured currency symbol, or the ₹ default until config hydrates.
     [[nodiscard]] QString currencySymbol() const;
@@ -62,6 +70,7 @@ private:
     blissmont::services::ConfigService* config_ = nullptr;
     QString scanText_;
     QString statusMessage_;
+    QString scanError_;
 };
 
 }  // namespace blissmont::viewmodels

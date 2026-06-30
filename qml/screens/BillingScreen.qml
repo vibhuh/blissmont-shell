@@ -23,6 +23,21 @@ Item {
         return s === "active" || s === "tendering"
     }
 
+    // Tier 3.3 — the status bar reports terminal STATE, not validation errors. Ready /
+    // Scanning / Tender required / Sale completed (+ the connectivity dot in StatusLine).
+    // Validation errors live at their field (scan not-found → the scan field; tender errors →
+    // the tender panel). Transient results/notices (settle line, rejections, operational
+    // hints) ride `notice` and fade back to this state.
+    property bool justCompleted: false
+    Timer { id: completedTimer; interval: 2500; onTriggered: screen.justCompleted = false }
+    readonly property string terminalState: {
+        if (screen.justCompleted)              return qsTr("Sale completed")
+        if (screen.navState === "tender")      return qsTr("Tender required")
+        if (vm.scanText.trim() !== "")         return qsTr("Scanning…")
+        if (screen.cartActive)                 return qsTr("Building bill")
+        return qsTr("Ready · scan a barcode or search")
+    }
+
     function focusSearch() { screen.navState = "item" }  // re-entering home re-focuses search
     function openTasks() { actionBar.openTasks() }       // global-shortcut entry to the launcher
 
@@ -79,6 +94,8 @@ Item {
             saleComplete.changeDue = PosEngineBridge.summary.changeDue
             saleComplete.provisional = provisional
             screen.navState = "item"      // reset the right panel to product-search home
+            screen.justCompleted = true   // status bar reads "Sale completed" briefly (Tier 3.3)
+            completedTimer.restart()
             saleComplete.present()        // green "Sale completed" card (engine already printed)
         }
         function onEodResult(batchId, provisional) {
@@ -96,6 +113,16 @@ Item {
         id: vm
         bridge: PosEngineBridge
         config: ConfigService   // currency symbol for the settle status line
+    }
+
+    // The view-model's status messages are transient RESULTS (settle line) or generic command
+    // rejections — show them briefly via the notice, then fade back to the terminal state.
+    // (Field-level validation — scan not-found — never comes here; it rides vm.scanError.)
+    Connections {
+        target: vm
+        function onStatusMessageChanged() {
+            if (vm.statusMessage !== "") screen.notify(vm.statusMessage)
+        }
     }
 
     ColumnLayout {
@@ -151,11 +178,13 @@ Item {
                 }
             }
 
-            // Right panel widened (Phase 3) for the search field, chips, quick-keys and
-            // touch targets; the cart grid still dominates the larger left column.
+            // Right panel — the swapping WORKSPACE (search/tender/discount/history/payout),
+            // not a fixed sidebar. Widened again (Tier 3.5) so the search field, chips,
+            // quick-key rows, the tender calculator and touch targets all breathe; the cart
+            // grid still dominates the larger left column (this is workspace, never wasted space).
             ItemPanel {
-                Layout.preferredWidth: 420
-                Layout.minimumWidth: 380
+                Layout.preferredWidth: 500
+                Layout.minimumWidth: 420
                 Layout.fillHeight: true
                 context: screen.navState
                 vm: vm
@@ -166,7 +195,9 @@ Item {
         // ── Transient feedback strip ──────────────────────────────────────────
         StatusLine {
             Layout.fillWidth: true
-            message: screen.notice !== "" ? screen.notice : vm.statusMessage
+            // State-first (Tier 3.3): a transient notice (settle result / rejection / op hint)
+            // overlays the steady terminal state, then fades back to it.
+            message: screen.notice !== "" ? screen.notice : screen.terminalState
             connectionText: ConnectionService.statusText
             online: ConnectionService.connected
         }
