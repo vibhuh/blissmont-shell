@@ -92,10 +92,13 @@ Rectangle {
         RowLayout {
             Layout.fillWidth: true
             Layout.topMargin: Theme.unit
-            Layout.bottomMargin: Theme.spaceXs
+            Layout.bottomMargin: Theme.unit
             spacing: Theme.unit
             ColumnLayout {
                 spacing: 0
+                // Center the label stack against the tall grand-total number so the two
+                // sit on a shared optical centre (R2.1 — no top-heavy collision).
+                Layout.alignment: Qt.AlignVCenter
                 Text {
                     text: qsTr("Total payable")
                     color: Theme.text
@@ -115,14 +118,17 @@ Rectangle {
             Text {
                 Layout.fillWidth: true
                 Layout.alignment: Qt.AlignVCenter
-                topPadding: Theme.spaceXs
-                bottomPadding: Theme.spaceXs
+                // A little breathing room above/below the big number so its ascenders and
+                // descenders never crowd the divider or the panel's bottom edge (R2.1).
+                topPadding: Theme.unit
+                bottomPadding: Theme.unit
                 text: Format.money(totals.s.total)
                 color: Theme.text
                 font.family: Theme.monoFamily
                 font.pixelSize: Theme.fontGrand
                 font.weight: Font.Bold
                 horizontalAlignment: Text.AlignRight
+                verticalAlignment: Text.AlignVCenter
                 elide: Text.ElideLeft
             }
         }

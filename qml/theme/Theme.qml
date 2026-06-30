@@ -42,9 +42,12 @@ QtObject {
     readonly property int rowHeight: 40   // bill-grid row (Phase 3: even table density)
 
     // Icon sizing (one icon family — components/Icon.qml). Stroke-based, themed.
-    readonly property int iconSm: 16
-    readonly property int iconMd: 20
-    readonly property int iconLg: 24
+    // Sized up (R2.2) so icons scan at arm's length on an all-day workstation — the
+    // bottom action bar (iconMd) and inline line markers (iconSm) read clearly without
+    // crowding their controls. One family, uniform stroke.
+    readonly property int iconSm: 18
+    readonly property int iconMd: 26
+    readonly property int iconLg: 30
 
     // ── Palettes ─────────────────────────────────────────────────────────────
     // Dark — the original values, kept as the dark palette.

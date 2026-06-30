@@ -28,7 +28,7 @@ Item {
         spacing: Theme.gap
 
         Text {
-            text: qsTr("Suspend / Resume")
+            text: qsTr("Hold / Resume")
             color: Theme.text
             font.family: Theme.fontFamily
             font.pixelSize: Theme.fontLarge
@@ -49,7 +49,7 @@ Item {
                 onAccepted: { srm.hold(labelField.text); labelField.clear() }
             }
             Button {
-                text: qsTr("Suspend sale")
+                text: qsTr("Hold sale")
                 onClicked: { srm.hold(labelField.text); labelField.clear() }
             }
         }
