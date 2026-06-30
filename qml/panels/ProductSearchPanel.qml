@@ -224,29 +224,18 @@ Item {
             onCurrentIndexChanged: if (currentIndex >= 0) positionViewAtIndex(currentIndex, ListView.Contain)
             // Type-to-refine + arrow/Enter/Tab while the table has focus all route through the reference impl.
             Keys.onPressed: (event) => keys.handleTableKey(event)
-            delegate: ItemDelegate {
+            // The ONE list row (components/ListRow.qml): name over SKU·HSN·GST%, price centered
+            // against the whole block, full-row highlight = current (keyboard) first then hover.
+            delegate: ListRow {
                 id: lrow
                 required property var item              // the "item" role = the catalog payload map
                 required property int index
                 width: ListView.view ? ListView.view.width : 0
-                height: 40
-                readonly property bool current: ListView.isCurrentItem
-                onClicked: { lookup.setCurrentIndex(index); panel.pick(lrow.item) }
-                contentItem: RowLayout {
-                    spacing: Theme.gap
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 0
-                        Text { text: lrow.item.name; color: lrow.current ? Theme.selectionText : Theme.text; font.family: Theme.fontFamily; font.pixelSize: Theme.fontBody; elide: Text.ElideRight; Layout.fillWidth: true }
-                        Text { text: lrow.item.sku + " · " + lrow.item.hsn + " · " + lrow.item.gst + "%"; color: lrow.current ? Theme.selectionText : Theme.textMuted; font.family: Theme.fontFamily; font.pixelSize: Theme.fontSmall }
-                    }
-                    Text { text: Format.currencySymbol + Format.amount(lrow.item.price); color: lrow.current ? Theme.selectionText : Theme.text; font.family: Theme.monoFamily; font.pixelSize: Theme.fontBody }
-                }
-                // Highlight = current row (keyboard) first, then hover (mouse). Visible in both themes.
-                background: Rectangle {
-                    radius: Theme.radiusSmall
-                    color: lrow.current ? Theme.selectionBg : (lrow.hovered ? Theme.surfaceAlt : "transparent")
-                }
+                selected: ListView.isCurrentItem
+                title: lrow.item.name
+                subtitle: lrow.item.sku + " · " + lrow.item.hsn + " · " + lrow.item.gst + "%"
+                rightValue: Format.currencySymbol + Format.amount(lrow.item.price)
+                onClicked: { lookup.setCurrentIndex(lrow.index); panel.pick(lrow.item) }
             }
         }
 

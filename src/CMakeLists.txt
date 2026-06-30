@@ -77,6 +77,7 @@ set(SHELL_QML_FILES
   panels/SettingsPanel.qml
   components/LookupKeys.qml
   components/Icon.qml
+  components/ListRow.qml
   components/ScanField.qml
   components/BillTable.qml
   components/StatusLine.qml
@@ -118,6 +119,7 @@ qt_add_qml_module(shell
     ${CMAKE_SOURCE_DIR}/qml/panels/SettingsPanel.qml
     ${CMAKE_SOURCE_DIR}/qml/components/LookupKeys.qml
     ${CMAKE_SOURCE_DIR}/qml/components/Icon.qml
+    ${CMAKE_SOURCE_DIR}/qml/components/ListRow.qml
     ${CMAKE_SOURCE_DIR}/qml/components/ScanField.qml
     ${CMAKE_SOURCE_DIR}/qml/components/BillTable.qml
     ${CMAKE_SOURCE_DIR}/qml/components/StatusLine.qml
