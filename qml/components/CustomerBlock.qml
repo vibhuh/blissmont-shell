@@ -35,8 +35,8 @@ Rectangle {
                                          : block.s.customerLabel
                     color: Theme.text
                     font.family: Theme.fontFamily
-                    font.pixelSize: Theme.fontBody
-                    font.bold: true
+                    font.pixelSize: Theme.fontMedium
+                    font.weight: Font.DemiBold
                     elide: Text.ElideRight
                     Layout.fillWidth: true
                 }
@@ -67,7 +67,7 @@ Rectangle {
             }
         }
 
-        Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.border }
+        Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.divider }
 
         // Points · Price level · bill-level Disc.
         RowLayout {
@@ -85,7 +85,7 @@ Rectangle {
             Column {
                 Text { text: qsTr("Disc"); color: Theme.textMuted; font.family: Theme.fontFamily; font.pixelSize: Theme.fontSmall; horizontalAlignment: Text.AlignRight; width: parent.width }
                 Text {
-                    text: (block.s.orderDiscount && block.s.orderDiscount !== "" ? block.s.orderDiscount : "0.00")
+                    text: Format.money(block.s.orderDiscount)
                     color: Theme.text
                     font.family: Theme.monoFamily
                     font.pixelSize: Theme.fontBody

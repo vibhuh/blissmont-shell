@@ -12,6 +12,8 @@
 #include <cstdlib>
 
 #include "bridge/PosEngineBridge.hpp"
+#include "core/Format.hpp"
+#include "core/Money.hpp"
 #include "models/CartLineModel.hpp"
 #include "models/CartSummary.hpp"
 #include "models/TenderListModel.hpp"
@@ -93,6 +95,66 @@ TEST(BridgeSmoke, TenderAddAndRemoveRoundTrip) {
     bridge.removeTender(tenderNo);
     ASSERT_TRUE(tendersSpy.wait(2000));
     EXPECT_EQ(bridge.tenders()->rowCount(), 0);
+
+    bridge.disconnectFromEngine();
+}
+
+// Tier-0.1 trace (refinement brief): reproduce EXACTLY what SaleCompleteOverlay reads. The
+// overlay's host (BillingScreen.onOrderSettled) captures summary.amountTendered/changeDue
+// SYNCHRONOUSLY inside the orderSettled slot — before the engine's post-settle empty-cart
+// CartUpdated is applied. A QSignalSpy.wait() would pump the loop past that empty snapshot and
+// read 0.00 (a test artifact, not the real bug), so we connect a direct slot and capture the
+// summary at emission time, which is what the QML handler actually sees. Over-tender so change
+// is non-zero too. Classifies 0.1: if these are correct, the dialog path is display-correct.
+TEST(BridgeSmoke, SettleOverlaySeesTenderSynchronously) {
+    const char* target = engineTarget();
+    if (!target) {
+        GTEST_SKIP() << "set BLISSMONT_ENGINE_TARGET to a running engine to run this";
+    }
+
+    PosEngineBridge bridge;
+    QSignalSpy connSpy(&bridge, &PosEngineBridge::connectionChanged);
+    bridge.connectToEngine(QString::fromUtf8(target));
+    ASSERT_TRUE(connSpy.wait(2000));
+
+    QSignalSpy cartSpy(bridge.cart(), &QAbstractItemModel::modelReset);
+    bridge.scanItem(QStringLiteral("TESTSKU"));
+    while (bridge.cart()->rowCount() == 0 && cartSpy.wait(2000)) {
+    }
+    ASSERT_GE(bridge.cart()->rowCount(), 1) << "scanned line never arrived in the cart";
+
+    const QString total = bridge.summary()->total();
+
+    // Capture the summary the instant orderSettled fires — exactly as the overlay host does.
+    QString capturedReceived, capturedChange, capturedTotalArg;
+    QObject::connect(&bridge, &PosEngineBridge::orderSettled,
+                     [&](const QString&, bool, const QString& totalArg) {
+                         capturedTotalArg = totalArg;
+                         capturedReceived = bridge.summary()->amountTendered();
+                         capturedChange = bridge.summary()->changeDue();
+                     });
+
+    // Over-tender: received = total + 100, so change should be 100.00.
+    const auto totalMinor = blissmont::core::Money::parse(total.toStdString());
+    ASSERT_TRUE(totalMinor.ok());
+    const auto received = totalMinor.value() + blissmont::core::Money(10000);
+    const QString receivedStr = QString::fromStdString(received.toString());
+
+    QSignalSpy settledSpy(&bridge, &PosEngineBridge::orderSettled);
+    bridge.addTender(QStringLiteral("cash"), receivedStr, QString());
+    bridge.settle();
+    ASSERT_TRUE(settledSpy.wait(3000)) << "settle never produced OrderSettled (shift open?)";
+
+    // OrderSettled.total_str is full-precision by design ("118.0000000000"); the overlay
+    // formats it through Format.money, so compare by parsed value, not string.
+    const auto capturedTotalMinor = blissmont::core::Money::parse(
+        blissmont::core::numfmt::round(capturedTotalArg.toStdString(), 2));
+    ASSERT_TRUE(capturedTotalMinor.ok());
+    EXPECT_EQ(capturedTotalMinor.value().minorUnits(), totalMinor.value().minorUnits());
+    EXPECT_EQ(capturedReceived.toStdString(), receivedStr.toStdString())
+        << "overlay Received would show this";
+    EXPECT_EQ(capturedChange.toStdString(), "100.00")
+        << "overlay Change would show this";
 
     bridge.disconnectFromEngine();
 }
@@ -311,6 +373,31 @@ TEST(BridgeSmoke, SuspendResumeRoundTrip) {
     ASSERT_GE(bridge.cart()->rowCount(), 1) << "resume did not restore the cart";
     EXPECT_EQ(bridge.summary()->status(), QStringLiteral("held"))
         << "a resumed draft must report status=held";
+
+    bridge.disconnectFromEngine();
+}
+
+// The Tasks-launcher Cash In path over real gRPC: recordCashMovement("cash_in", …) round-trips
+// the existing record_cash_movement command (proto tag 17) and the engine echoes
+// CashMovementRecorded with the type + the amount it accepted. Proves the new bridge wiring
+// (no contract change) reaches the engine's existing handler. Requires the dev engine.
+TEST(BridgeSmoke, CashInRecordsAndEchoes) {
+    const char* target = engineTarget();
+    if (!target) {
+        GTEST_SKIP() << "set BLISSMONT_ENGINE_TARGET to a running engine to run this";
+    }
+
+    PosEngineBridge bridge;
+    QSignalSpy connSpy(&bridge, &PosEngineBridge::connectionChanged);
+    bridge.connectToEngine(QString::fromUtf8(target));
+    ASSERT_TRUE(connSpy.wait(2000));
+
+    QSignalSpy cashSpy(&bridge, &PosEngineBridge::cashMovementRecorded);
+    bridge.recordCashMovement(QStringLiteral("cash_in"), QStringLiteral("500"),
+                              QStringLiteral("opening float top-up"));
+    ASSERT_TRUE(cashSpy.wait(3000)) << "recordCashMovement never produced CashMovementRecorded";
+    EXPECT_EQ(cashSpy.at(0).at(1).toString(), QStringLiteral("cash_in"));
+    EXPECT_FALSE(cashSpy.at(0).at(2).toString().isEmpty()) << "echoed amount missing";
 
     bridge.disconnectFromEngine();
 }

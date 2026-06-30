@@ -79,6 +79,12 @@ public:
     Q_INVOKABLE void settle();
     Q_INVOKABLE void voidCart();
     Q_INVOKABLE void addMiscCharge(const QString& description, const QString& amount);
+    // Cash drawer movement (UX §12) — type is "cash_in" | "cash_out". Surfaces the
+    // existing record_cash_movement command (proto tag 17, already handled engine-side)
+    // to the Tasks "Cash In" launcher. No contract change: the proto + engine path exist;
+    // this is the missing view-boundary wiring. The engine echoes CashMovementRecorded.
+    Q_INVOKABLE void recordCashMovement(const QString& type, const QString& amount,
+                                        const QString& reason);
     Q_INVOKABLE void recordPayout(const QString& amount, const QString& category, const QString& note);
     Q_INVOKABLE void startReturn(const QString& receiptNo, bool blind);
     Q_INVOKABLE void setReturnLineQty(int originalLineNo, const QString& qty, bool restock);
@@ -102,7 +108,10 @@ public:
 
 signals:
     void connectionChanged();
-    void orderSettled(const QString& receiptNo, bool provisional, const QString& total);
+    // received/change carry the settle-time tender (contracts v1.6.0) so the post-settle
+    // confirmation binds to immutable values, not the live cart summary the engine resets.
+    void orderSettled(const QString& receiptNo, bool provisional, const QString& total,
+                      const QString& received, const QString& change);
     void itemNotFound(const QString& barcode);
     void commandRejected(const QString& code, const QString& message);
     void shiftStateChanged(const QString& shiftId, const QString& status);
@@ -124,13 +133,27 @@ signals:
                        bool allowBlindReturn, const QString& refundTenderMode,
                        const QString& returnRequiresAuth, bool restockDefault,
                        bool allowPartialReturn, const QString& heldCartExpiry,
-                       const QStringList& payoutCategories);
+                       const QStringList& payoutCategories,
+                       // Store + register identity for the top bar (contracts v1.6.0:
+                       // store_name already on the wire; register_name device-local).
+                       const QString& storeName, const QString& registerName);
     void authRequired(const QString& action, const QString& reason);
     // A payout was recorded (UX §12): the engine echoes the provisional/local payout id,
     // amount and category after RecordPayout. The shell surfaces this as the payout
     // confirmation — display only; the engine + server own the GL posting. The amount is
     // exactly what the engine accepted (never re-keyed here).
     void payoutRecorded(const QString& payoutId, const QString& amount, const QString& category);
+    // A cash drawer movement was recorded (UX §12): the engine echoes the provisional/local
+    // movement id, type ("cash_in"|"cash_out") and amount after RecordCashMovement. Display
+    // only — the engine + server own the GL posting. Mirrors payoutRecorded.
+    void cashMovementRecorded(const QString& movementId, const QString& type,
+                              const QString& amount);
+    // EOD day-close outcome (UX §12). eodResult carries the batch id (provisional until sync);
+    // eodBlocked carries the still-open shift ids that prevented the close. Surfaced by the
+    // Tasks "Z Report" launcher as a confirmation / blocking notice (display only — the engine
+    // owns the close). The proto + engine paths (RunEod / EodResult / EodBlocked) already exist.
+    void eodResult(const QString& batchId, bool provisional);
+    void eodBlocked(const QStringList& openShiftIds);
     // The original bill's returnable lines have landed in returnLines (full snapshot).
     // Carries the original receipt for the panel title; the line payload is the model.
     void returnContextLoaded(const QString& originalReceiptNo);
