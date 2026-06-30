@@ -3,15 +3,22 @@ import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import Blissmont.Shell
 
-// components/ActionBar.qml — zone 4 (brief §4): the bill-scoped, icon-only, UNIFORM action bar.
+// components/ActionBar.qml — zone 4 (brief §4): the bill-scoped, icon+label, UNIFORM action bar.
 // The final set is the seven business verbs of the current bill:
 //   Charge (F12) · Hold · Discount · Sundry · Print · Void · Tasks ▾
 // "Save" is gone (a software verb, ambiguous in a POS). Sale actions only live here; operational
-// actions live under Tasks ▾ (the ▾ marks a menu, not an immediate action). Each button carries
-// a tooltip (hover + long-press) and a shortcut hint; enable/disable is driven by cart state
-// (and, for Print, by whether a just-settled bill exists to reprint). The bar does NOT mutate
-// state — it raises `triggered(name)` and the host (BillingScreen) maps the name to a
-// nav/command, so the same handler backs both these buttons and Main.qml's global F-keys.
+// actions live under Tasks ▾ (the ▾ marks a menu, not an immediate action).
+//
+// Tier 1 refinement: each button is icon + a short TEXT LABEL beneath it (the constantly-used
+// bar earns explicit labels over icon-only-with-tooltip). All seven keep an IDENTICAL footprint
+// (equal width via fillWidth, equal height) with consistent icon size, spacing, and full
+// hover/pressed/disabled states. The PRIMARY verb, Charge, is made unmistakable WITHOUT breaking
+// that uniform footprint: it alone carries the accent fill and a bold "₹ Charge" label, so the
+// cashier's eye lands on it at a glance (the squint test). Each button still carries a tooltip
+// (hover + long-press); enable/disable is driven by cart state (and, for Print, by whether a
+// just-settled bill exists to reprint). The bar does NOT mutate state — it raises
+// `triggered(name)` and the host (BillingScreen) maps the name to a nav/command, so the same
+// handler backs both these buttons and Main.qml's global F-keys.
 Rectangle {
     id: bar
     // State the gating reads (host-bound). cartActive == cart has lines (status "active").
@@ -23,16 +30,17 @@ Rectangle {
     // Open the Tasks launcher — called by the Tasks button and by the host's global shortcut.
     function openTasks() { tasksMenu.popup(tasksBtn, 0, -tasksMenu.height) }
 
-    implicitHeight: Theme.actionButton + 2 * Theme.unit
+    // Taller than the old icon-only bar to seat the icon + label stack comfortably.
+    implicitHeight: Theme.actionButton + Theme.gap + 2 * Theme.unit
     color: Theme.surface
     radius: Theme.radius
     border.color: Theme.border
 
-    // One uniform action button — icon (from the single icon family) + tooltip + shortcut
-    // hint. Icon-only: the label/shortcut live in the tooltip, never as appended text, so
-    // all seven stay identical in width AND height. Restrained palette (Phase 3): only the
-    // PRIMARY verb (Charge) carries the accent fill; Void carries danger; the rest are
-    // neutral ghost buttons. Every button has hover / pressed / disabled states.
+    // One uniform action button — icon (from the single icon family) stacked over a short text
+    // label. All seven stay identical in width AND height; only the colour/weight changes, never
+    // the footprint. Restrained palette: only the PRIMARY verb (Charge) carries the accent fill +
+    // a bold label; Void carries danger; the rest are neutral ghost buttons. Every button has
+    // hover / pressed / disabled states.
     component ActionButton: AbstractButton {
         id: btn
         property string iconName: ""
@@ -41,8 +49,8 @@ Rectangle {
         property bool danger: false
         property bool primary: false
         Layout.fillWidth: true
-        Layout.preferredHeight: Theme.actionButton
-        implicitHeight: Theme.actionButton
+        Layout.preferredHeight: Theme.actionButton + Theme.gap
+        implicitHeight: Theme.actionButton + Theme.gap
         hoverEnabled: true
 
         readonly property color fg: !enabled ? Theme.textMuted
@@ -50,12 +58,25 @@ Rectangle {
                                     : danger  ? Theme.danger
                                     : Theme.text
 
-        contentItem: Item {
+        contentItem: ColumnLayout {
+            spacing: Theme.spaceXs
             Icon {
-                anchors.centerIn: parent
+                Layout.alignment: Qt.AlignHCenter
                 name: btn.iconName
                 color: btn.fg
-                size: Theme.iconLg
+                size: Theme.iconMd
+            }
+            Text {
+                Layout.alignment: Qt.AlignHCenter
+                Layout.fillWidth: true
+                text: btn.label
+                color: btn.fg
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.fontSmall
+                // The primary verb reads heavier — bold label on the accent fill.
+                font.bold: btn.primary
+                horizontalAlignment: Text.AlignHCenter
+                elide: Text.ElideRight
             }
         }
         background: Rectangle {
@@ -91,7 +112,7 @@ Rectangle {
         anchors.margins: Theme.unit
         spacing: Theme.unit
 
-        ActionButton { iconName: "charge";  primary: true; label: qsTr("Charge");   shortcutHint: "F12"; enabled: bar.cartActive; onClicked: bar.triggered("charge") }
+        ActionButton { iconName: "charge";  primary: true; label: Format.currencySymbol + qsTr(" Charge"); shortcutHint: "F12"; enabled: bar.cartActive; onClicked: bar.triggered("charge") }
         ActionButton { iconName: "hold";    label: qsTr("Hold");     shortcutHint: "F7";  enabled: bar.cartActive; onClicked: bar.triggered("hold") }
         ActionButton { iconName: "discount"; label: qsTr("Discount"); shortcutHint: "Ctrl+D"; enabled: bar.cartActive && ConfigService.allowDiscounts; onClicked: bar.triggered("discount") }
         ActionButton { iconName: "sundry";  label: qsTr("Sundry");   shortcutHint: "F6";  enabled: bar.cartActive; onClicked: bar.triggered("sundry") }

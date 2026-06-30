@@ -84,20 +84,24 @@ Rectangle {
 
         Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.divider }
 
-        // ── Footer: the GRAND TOTAL (the screen's most prominent number) gets the row's
-        //    full width on the right so it never crowds the label or clips; the label +
-        //    item/unit counts stack compactly on the left (Phase 3).
+        // ── Footer: the GRAND TOTAL — the screen's most prominent number (Tier 1.2). It is
+        //    enlarged and bold, gets the row's full width on the right so it never crowds the
+        //    label or clips, and sits in its own padded band so the big number has comfortable
+        //    baseline room (fixes any container collision). The label + item/unit counts stack
+        //    compactly on the left.
         RowLayout {
             Layout.fillWidth: true
-            Layout.topMargin: Theme.spaceXs
+            Layout.topMargin: Theme.unit
+            Layout.bottomMargin: Theme.spaceXs
             spacing: Theme.unit
             ColumnLayout {
                 spacing: 0
                 Text {
                     text: qsTr("Total payable")
-                    color: Theme.textMuted
+                    color: Theme.text
                     font.family: Theme.fontFamily
-                    font.pixelSize: Theme.fontSmall
+                    font.pixelSize: Theme.fontBody
+                    font.bold: true
                 }
                 Text {
                     text: qsTr("%1 items · %2 units")
@@ -111,11 +115,13 @@ Rectangle {
             Text {
                 Layout.fillWidth: true
                 Layout.alignment: Qt.AlignVCenter
+                topPadding: Theme.spaceXs
+                bottomPadding: Theme.spaceXs
                 text: Format.money(totals.s.total)
                 color: Theme.text
                 font.family: Theme.monoFamily
                 font.pixelSize: Theme.fontGrand
-                font.weight: Font.DemiBold
+                font.weight: Font.Bold
                 horizontalAlignment: Text.AlignRight
                 elide: Text.ElideLeft
             }

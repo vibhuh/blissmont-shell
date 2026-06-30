@@ -105,5 +105,5 @@ QtObject {
     readonly property int fontMedium: 16  // emphasised body (item name, customer name)
     readonly property int fontLarge: 20
     readonly property int fontTotal: 28
-    readonly property int fontGrand: 34   // the Grand Total — the most prominent number on screen
+    readonly property int fontGrand: 42   // the Grand Total — the most prominent number on screen (Tier 1.2: ~24% larger)
 }
