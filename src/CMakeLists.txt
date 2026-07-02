@@ -62,6 +62,9 @@ target_link_libraries(shell
 set(SHELL_QML_FILES
   Main.qml
   screens/BillingScreen.qml
+  workflows/EodWorkflow.qml
+  workflows/BeginDayWorkflow.qml
+  workflows/ShiftCloseWorkflow.qml
   panels/ItemPanel.qml
   panels/ProductSearchPanel.qml
   panels/BillDiscountPanel.qml
@@ -104,6 +107,9 @@ qt_add_qml_module(shell
   QML_FILES
     ${CMAKE_SOURCE_DIR}/qml/Main.qml
     ${CMAKE_SOURCE_DIR}/qml/screens/BillingScreen.qml
+    ${CMAKE_SOURCE_DIR}/qml/workflows/EodWorkflow.qml
+    ${CMAKE_SOURCE_DIR}/qml/workflows/BeginDayWorkflow.qml
+    ${CMAKE_SOURCE_DIR}/qml/workflows/ShiftCloseWorkflow.qml
     ${CMAKE_SOURCE_DIR}/qml/panels/ItemPanel.qml
     ${CMAKE_SOURCE_DIR}/qml/panels/ProductSearchPanel.qml
     ${CMAKE_SOURCE_DIR}/qml/panels/BillDiscountPanel.qml

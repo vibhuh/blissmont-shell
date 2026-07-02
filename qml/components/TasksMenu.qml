@@ -12,6 +12,9 @@ Menu {
     id: menu
     signal selected(string action)
 
+    // Whether a shift is currently open — gates Begin Day (open a shift only when none is open).
+    property bool shiftOpen: false
+
     // Themed surface for the popup.
     background: Rectangle {
         implicitWidth: 220
@@ -48,6 +51,10 @@ Menu {
     MenuSeparator {}
     TaskItem { text: qsTr("Open Drawer"); taskAction: "opendrawer" }
     TaskItem { text: qsTr("X Report");    taskAction: "xreport" }
+    // Shift / day lifecycle (UX §12). Begin Day opens a shift (only when none is open);
+    // Close Shift ends the open one; Z Report closes the store's day.
+    TaskItem { text: qsTr("Begin Day");   taskAction: "beginday";   enabled: !menu.shiftOpen }
+    TaskItem { text: qsTr("Close Shift"); taskAction: "closeshift"; enabled: menu.shiftOpen }
     TaskItem { text: qsTr("Z Report");    taskAction: "zreport" }
     MenuSeparator {}
     TaskItem { text: qsTr("Calculator");  taskAction: "calculator" }

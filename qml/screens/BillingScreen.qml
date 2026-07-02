@@ -13,6 +13,10 @@ import Blissmont.Shell
 Item {
     id: screen
     property string navState: "item"
+    // Full-screen cash-control workflow layer (UX §12) — "" = the sale screen owns the view;
+    // "eod" = End-of-Day day close. Distinct from navState (the right-panel takeover): these
+    // are full-screen, never modals or panels. Begin-Day / shift-close join this layer later.
+    property string workflow: ""
     property string notice: ""   // transient feedback (rejections, not-yet-reachable notices)
     // The receipt # of the bill settled this session — what Print reprints (brief §3). Set by
     // the orderSettled handler; gates the Print button (nothing to reprint until a sale completes).
@@ -75,7 +79,9 @@ Item {
         case "cashin":   screen.navState = "cashin"; break
         case "calculator": screen.navState = "calculator"; break
         case "settings": screen.navState = "settings"; break
-        case "zreport":  PosEngineBridge.runEod(); break  // engine prints the Z / closes the batch
+        case "beginday": screen.workflow = "beginday"; break   // full-screen Begin-Day (UX §12): OpenShift
+        case "closeshift": screen.workflow = "closeshift"; break // full-screen Shift close (UX §12): CloseShift
+        case "zreport":  screen.workflow = "eod"; break   // full-screen EOD (UX §12): confirm → RunEod
         case "opendrawer":
             // No terminal command for a manual drawer pulse in this contract — the drawer
             // pulses with the ESC/POS receipt at settle (engine-owned). Surface that honestly.
@@ -114,10 +120,12 @@ Item {
             saleComplete.present()        // green "Sale completed" card (engine already printed)
         }
         function onEodResult(batchId, provisional) {
+            if (screen.workflow === "eod") return   // the full-screen EOD workflow owns the outcome
             screen.notify(provisional ? qsTr("Day close recorded (offline): %1").arg(batchId)
                                       : qsTr("Day close recorded: %1").arg(batchId))
         }
         function onEodBlocked(openShiftIds) {
+            if (screen.workflow === "eod") return   // shown full-screen by the EOD workflow
             screen.notify(qsTr("Z Report blocked — close the open shift first (%1)")
                           .arg(openShiftIds.length))
         }
@@ -231,6 +239,7 @@ Item {
             Layout.fillWidth: true
             cartActive: screen.cartActive
             canReprint: screen.lastReceiptNo !== ""
+            shiftOpen: screen.shiftStatus === "open"
             onTriggered: (name) => screen.doAction(name)
         }
     }
@@ -242,5 +251,38 @@ Item {
         id: saleComplete
         anchors.fill: parent
         onDismissed: screen.focusSearch()
+    }
+
+    // ── Full-screen cash-control workflow layer (UX §12) ─────────────────────────
+    // A DIFFERENT fiscal layer than the sale — EOD (now), Begin-Day / shift-close (next) —
+    // so it takes over the WHOLE screen, above every zone, never a modal or a right-panel
+    // takeover. Empty `workflow` unloads it entirely (the sale screen owns the view).
+    Loader {
+        anchors.fill: parent
+        z: 200
+        active: screen.workflow !== ""
+        visible: active
+        sourceComponent: screen.workflow === "eod" ? eodWorkflowComp
+                       : screen.workflow === "beginday" ? beginDayWorkflowComp
+                       : screen.workflow === "closeshift" ? shiftCloseWorkflowComp
+                       : null
+    }
+    Component {
+        id: eodWorkflowComp
+        EodWorkflow {
+            onClosed: { screen.workflow = ""; screen.focusSearch() }
+        }
+    }
+    Component {
+        id: beginDayWorkflowComp
+        BeginDayWorkflow {
+            onClosed: { screen.workflow = ""; screen.focusSearch() }
+        }
+    }
+    Component {
+        id: shiftCloseWorkflowComp
+        ShiftCloseWorkflow {
+            onClosed: { screen.workflow = ""; screen.focusSearch() }
+        }
     }
 }
