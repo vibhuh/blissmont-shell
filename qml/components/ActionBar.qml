@@ -25,6 +25,8 @@ Rectangle {
     property bool cartActive: false
     // canReprint == a bill was just settled this session, so Print can reprint it.
     property bool canReprint: false
+    // shiftOpen == a shift is currently open — gates the Tasks launcher's Begin Day item.
+    property bool shiftOpen: false
     signal triggered(string name)
 
     // Open the Tasks launcher — called by the Tasks button and by the host's global shortcut.
@@ -141,6 +143,7 @@ Rectangle {
     // Tasks actions with the same handler as the bar buttons and F-keys.
     TasksMenu {
         id: tasksMenu
+        shiftOpen: bar.shiftOpen
         onSelected: (action) => bar.triggered(action)
     }
 }

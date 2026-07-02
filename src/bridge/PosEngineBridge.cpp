@@ -406,6 +406,14 @@ void PosEngineBridge::runEod() {
     writeCommand(std::move(cmd));
 }
 
+void PosEngineBridge::openShift(const QString& cashierUserId, const QString& openingCashStr) {
+    Command cmd;
+    auto* os = cmd.mutable_open_shift();
+    os->set_cashier_user_id(cashierUserId.toStdString());
+    os->set_opening_cash_str(openingCashStr.toStdString());
+    writeCommand(std::move(cmd));
+}
+
 void PosEngineBridge::holdCart(const QString& label) {
     Command cmd;
     cmd.mutable_hold_cart()->set_label(label.toStdString());

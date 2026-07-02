@@ -99,6 +99,11 @@ public:
     Q_INVOKABLE void searchByCustomer(const QString& query);
     Q_INVOKABLE void reprintBill(const QString& receiptNo);
     Q_INVOKABLE void runEod();
+    // Begin-Day (UX §12) — open the day's shift with an opening float. The engine emits
+    // ShiftStateChanged(open) on success, or CommandRejected(SHIFT_ALREADY_OPEN) if one is
+    // already open. cashierUserId identifies the opening cashier (no shell login yet — a
+    // device-default is passed for now).
+    Q_INVOKABLE void openShift(const QString& cashierUserId, const QString& openingCashStr);
     // Suspend/resume (UX §10) — drafts are terminal-local. holdCart parks the current cart
     // (the engine echoes the minted id via cartHeld); resumeCart restores one by id (the
     // engine re-emits CartUpdated with status="held"); listHeldCarts fills the held-cart model.
