@@ -79,7 +79,8 @@ Item {
         case "cashin":   screen.navState = "cashin"; break
         case "calculator": screen.navState = "calculator"; break
         case "settings": screen.navState = "settings"; break
-        case "beginday": screen.workflow = "beginday"; break  // full-screen Begin-Day (UX §12): OpenShift
+        case "beginday": screen.workflow = "beginday"; break   // full-screen Begin-Day (UX §12): OpenShift
+        case "closeshift": screen.workflow = "closeshift"; break // full-screen Shift close (UX §12): CloseShift
         case "zreport":  screen.workflow = "eod"; break   // full-screen EOD (UX §12): confirm → RunEod
         case "opendrawer":
             // No terminal command for a manual drawer pulse in this contract — the drawer
@@ -263,6 +264,7 @@ Item {
         visible: active
         sourceComponent: screen.workflow === "eod" ? eodWorkflowComp
                        : screen.workflow === "beginday" ? beginDayWorkflowComp
+                       : screen.workflow === "closeshift" ? shiftCloseWorkflowComp
                        : null
     }
     Component {
@@ -274,6 +276,12 @@ Item {
     Component {
         id: beginDayWorkflowComp
         BeginDayWorkflow {
+            onClosed: { screen.workflow = ""; screen.focusSearch() }
+        }
+    }
+    Component {
+        id: shiftCloseWorkflowComp
+        ShiftCloseWorkflow {
             onClosed: { screen.workflow = ""; screen.focusSearch() }
         }
     }

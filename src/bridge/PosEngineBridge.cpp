@@ -108,6 +108,11 @@ void PosEngineBridge::applyEvent(const Event& evt) {
             emit shiftStateChanged(QString::fromStdString(evt.shift_state_changed().shift_id()),
                                    QString::fromStdString(evt.shift_state_changed().status()));
             break;
+        case E::kShiftClosed:
+            emit shiftClosed(QString::fromStdString(evt.shift_closed().opening_float_str()),
+                             QString::fromStdString(evt.shift_closed().counted_cash_str()),
+                             QString::fromStdString(evt.shift_closed().variance_str()));
+            break;
         case E::kSyncStatusChanged:
             emit syncStatusChanged(evt.sync_status_changed().online(),
                                    evt.sync_status_changed().pending());
@@ -411,6 +416,19 @@ void PosEngineBridge::openShift(const QString& cashierUserId, const QString& ope
     auto* os = cmd.mutable_open_shift();
     os->set_cashier_user_id(cashierUserId.toStdString());
     os->set_opening_cash_str(openingCashStr.toStdString());
+    writeCommand(std::move(cmd));
+}
+
+void PosEngineBridge::closeShift(const QVariantList& denominations, const QString& closingCashStr) {
+    Command cmd;
+    auto* cs = cmd.mutable_close_shift();
+    for (const auto& d : denominations) {
+        const QVariantMap row = d.toMap();
+        auto* denom = cs->add_denominations();
+        denom->set_unit_value(row.value(QStringLiteral("unit")).toInt());
+        denom->set_count(row.value(QStringLiteral("count")).toInt());
+    }
+    cs->set_closing_cash_str(closingCashStr.toStdString());
     writeCommand(std::move(cmd));
 }
 

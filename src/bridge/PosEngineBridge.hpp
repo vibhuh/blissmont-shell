@@ -104,6 +104,13 @@ public:
     // already open. cashierUserId identifies the opening cashier (no shell login yet — a
     // device-default is passed for now).
     Q_INVOKABLE void openShift(const QString& cashierUserId, const QString& openingCashStr);
+    // Shift close (UX §12, blind denomination count). denominations is a list of {unit, count}
+    // maps (rupee note/coin value → count keyed). The engine sums them (Σ unit×count) as the
+    // counted cash, computes variance = counted − opening, and replies with ShiftClosed
+    // (variance revealed only AFTER commit), or AuthRequired(close_shift_variance) when the
+    // variance exceeds tolerance and the config demands sign-off. closingCashStr carries the
+    // same total for a single-total count mode.
+    Q_INVOKABLE void closeShift(const QVariantList& denominations, const QString& closingCashStr);
     // Suspend/resume (UX §10) — drafts are terminal-local. holdCart parks the current cart
     // (the engine echoes the minted id via cartHeld); resumeCart restores one by id (the
     // engine re-emits CartUpdated with status="held"); listHeldCarts fills the held-cart model.
@@ -120,6 +127,9 @@ signals:
     void itemNotFound(const QString& barcode);
     void commandRejected(const QString& code, const QString& message);
     void shiftStateChanged(const QString& shiftId, const QString& status);
+    // Blind-count reveal after a successful CloseShift (terminal v1.8.0): the opening float, the
+    // counted cash, and the variance (counted − opening; may be negative).
+    void shiftClosed(const QString& openingFloat, const QString& countedCash, const QString& variance);
     void syncStatusChanged(bool online, int pending);
     // Device config relayed by the engine over the Session stream (contracts
     // v1.1.0; payment methods added in v1.2.0). Emitted on connect, on reconnect,

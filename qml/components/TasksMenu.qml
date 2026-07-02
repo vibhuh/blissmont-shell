@@ -51,9 +51,10 @@ Menu {
     MenuSeparator {}
     TaskItem { text: qsTr("Open Drawer"); taskAction: "opendrawer" }
     TaskItem { text: qsTr("X Report");    taskAction: "xreport" }
-    // Shift / day lifecycle (UX §12). Begin Day opens a shift — only when none is open;
-    // Z Report closes the store's day. (Close Shift joins here when it lands.)
-    TaskItem { text: qsTr("Begin Day");   taskAction: "beginday"; enabled: !menu.shiftOpen }
+    // Shift / day lifecycle (UX §12). Begin Day opens a shift (only when none is open);
+    // Close Shift ends the open one; Z Report closes the store's day.
+    TaskItem { text: qsTr("Begin Day");   taskAction: "beginday";   enabled: !menu.shiftOpen }
+    TaskItem { text: qsTr("Close Shift"); taskAction: "closeshift"; enabled: menu.shiftOpen }
     TaskItem { text: qsTr("Z Report");    taskAction: "zreport" }
     MenuSeparator {}
     TaskItem { text: qsTr("Calculator");  taskAction: "calculator" }
