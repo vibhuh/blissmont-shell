@@ -20,6 +20,21 @@ TEST(BillingViewModel, SubmitScanClearsTextForHomeReturn) {
     EXPECT_TRUE(vm.scanText().isEmpty());  // cleared -> focus returns to empty scan field
 }
 
+// Tier 3.3: a failed scan is a FIELD-level error (scanError), never a status-bar message
+// (statusMessage). Editing the field clears the stale hint.
+TEST(BillingViewModel, ItemNotFoundSurfacesAtFieldNotStatusBar) {
+    PosEngineBridge bridge;
+    BillingViewModel vm;
+    vm.setBridge(&bridge);
+
+    emit bridge.itemNotFound(QStringLiteral("999"));
+    EXPECT_EQ(vm.scanError().toStdString(), "Item not found: 999");
+    EXPECT_EQ(vm.statusMessage().toStdString(), "");  // NOT camped in the status bar
+
+    vm.setScanText(QStringLiteral("9"));              // editing dismisses the hint
+    EXPECT_EQ(vm.scanError().toStdString(), "");
+}
+
 TEST(BillingViewModel, BlankSubmitIsNoOp) {
     PosEngineBridge bridge;
     BillingViewModel vm;

@@ -14,6 +14,7 @@ blissmont_add_proto_library(shell_proto
 # tests instantiate those same C++ classes directly and ignore QML entirely.
 qt_add_library(shell STATIC
   core/Money.cpp            core/Money.hpp
+  core/Format.cpp           core/Format.hpp
   core/Result.hpp
   bridge/PosEngineBridge.cpp        bridge/PosEngineBridge.hpp
   models/CartLineModel.cpp          models/CartLineModel.hpp
@@ -24,6 +25,7 @@ qt_add_library(shell STATIC
   models/BillDetailModel.cpp        models/BillDetailModel.hpp
   models/HeldCartModel.cpp          models/HeldCartModel.hpp
   viewmodels/BillingViewModel.cpp   viewmodels/BillingViewModel.hpp
+  viewmodels/LookupController.cpp   viewmodels/LookupController.hpp
   viewmodels/TenderViewModel.cpp    viewmodels/TenderViewModel.hpp
   viewmodels/ReturnViewModel.cpp    viewmodels/ReturnViewModel.hpp
   viewmodels/HistoryViewModel.cpp   viewmodels/HistoryViewModel.hpp
@@ -31,6 +33,7 @@ qt_add_library(shell STATIC
   viewmodels/PayoutViewModel.cpp    viewmodels/PayoutViewModel.hpp
   services/ConnectionService.cpp    services/ConnectionService.hpp
   services/ConfigService.cpp        services/ConfigService.hpp
+  services/FormatService.cpp        services/FormatService.hpp
 )
 
 # The Qt-generated <module>_qmltyperegistrations.cpp includes each QML_ELEMENT type's
@@ -68,11 +71,20 @@ set(SHELL_QML_FILES
   panels/HistoryPanel.qml
   panels/SuspendPanel.qml
   panels/PayoutPanel.qml
+  panels/SundryPanel.qml
+  panels/CashInPanel.qml
+  panels/CalculatorPanel.qml
+  panels/SettingsPanel.qml
+  components/LookupKeys.qml
+  components/Icon.qml
+  components/ListRow.qml
   components/ScanField.qml
   components/BillTable.qml
   components/StatusLine.qml
   components/TopBar.qml
   components/ActionBar.qml
+  components/TasksMenu.qml
+  components/SaleCompleteOverlay.qml
   components/TotalsBlock.qml
   components/CustomerBlock.qml
   theme/Theme.qml)
@@ -101,11 +113,20 @@ qt_add_qml_module(shell
     ${CMAKE_SOURCE_DIR}/qml/panels/HistoryPanel.qml
     ${CMAKE_SOURCE_DIR}/qml/panels/SuspendPanel.qml
     ${CMAKE_SOURCE_DIR}/qml/panels/PayoutPanel.qml
+    ${CMAKE_SOURCE_DIR}/qml/panels/SundryPanel.qml
+    ${CMAKE_SOURCE_DIR}/qml/panels/CashInPanel.qml
+    ${CMAKE_SOURCE_DIR}/qml/panels/CalculatorPanel.qml
+    ${CMAKE_SOURCE_DIR}/qml/panels/SettingsPanel.qml
+    ${CMAKE_SOURCE_DIR}/qml/components/LookupKeys.qml
+    ${CMAKE_SOURCE_DIR}/qml/components/Icon.qml
+    ${CMAKE_SOURCE_DIR}/qml/components/ListRow.qml
     ${CMAKE_SOURCE_DIR}/qml/components/ScanField.qml
     ${CMAKE_SOURCE_DIR}/qml/components/BillTable.qml
     ${CMAKE_SOURCE_DIR}/qml/components/StatusLine.qml
     ${CMAKE_SOURCE_DIR}/qml/components/TopBar.qml
     ${CMAKE_SOURCE_DIR}/qml/components/ActionBar.qml
+    ${CMAKE_SOURCE_DIR}/qml/components/TasksMenu.qml
+    ${CMAKE_SOURCE_DIR}/qml/components/SaleCompleteOverlay.qml
     ${CMAKE_SOURCE_DIR}/qml/components/TotalsBlock.qml
     ${CMAKE_SOURCE_DIR}/qml/components/CustomerBlock.qml
     ${CMAKE_SOURCE_DIR}/qml/theme/Theme.qml

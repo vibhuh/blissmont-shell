@@ -23,6 +23,7 @@ void CartSummary::update(const blissmont::terminal::v1::CartUpdated& s) {
     taxInterstate_ = s.tax_interstate();
     itemCount_ = s.item_count();
     unitCount_ = QString::fromStdString(s.unit_count_str());
+    nextReceiptNo_ = QString::fromStdString(s.next_receipt_no());
     emit changed();
 }
 

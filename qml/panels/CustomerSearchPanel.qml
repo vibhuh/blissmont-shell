@@ -10,13 +10,14 @@ import Blissmont.Shell
 // clears it (empty id). The engine owns customer state.
 //
 // DEFERRED DATA: there is no customer-search or create-customer command on the terminal
-// contract yet (only select_customer, by id). So search results are empty here and Create
-// is staged but not wired; when the contract lands, bind results to the engine and point
-// Create at the new command. The select + walk-in paths are live today.
+// contract yet (only select_customer, by id). So search results are empty here, and the
+// CREATE-NEW affordance is intentionally absent (R1.4) — a create form would be a dead end
+// with no engine command to save it. When a create-customer command lands on the contract,
+// re-introduce the create path here and point Save at it. The select + walk-in paths are
+// live today.
 Item {
     id: panel
     signal done()
-    property bool creating: false
 
     function chooseWalkIn() { PosEngineBridge.selectCustomer(""); panel.done() }
 
@@ -39,7 +40,6 @@ Item {
         TextField {
             id: searchField
             Layout.fillWidth: true
-            visible: !panel.creating
             placeholderText: qsTr("Search by mobile…")
             inputMethodHints: Qt.ImhDialableCharactersOnly
             font.family: Theme.monoFamily; font.pixelSize: Theme.fontBody
@@ -47,11 +47,12 @@ Item {
             Component.onCompleted: forceActiveFocus()
         }
 
-        // Results (deferred — empty until a customer-search contract lands).
+        // Results (deferred — empty until a customer-search contract lands). Create-new is
+        // intentionally omitted (R1.4): no create-customer command exists on the engine
+        // contract yet, so there is no dead-end create form to fall into.
         ColumnLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            visible: !panel.creating
             spacing: Theme.unit
             Text {
                 Layout.fillWidth: true
@@ -63,53 +64,6 @@ Item {
                 wrapMode: Text.WordWrap
             }
             Item { Layout.fillHeight: true }
-            Button {
-                Layout.fillWidth: true
-                text: qsTr("Create new customer")
-                onClicked: panel.creating = true
-            }
-        }
-
-        // ── Create new ───────────────────────────────────────────────────────────
-        ColumnLayout {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            visible: panel.creating
-            spacing: Theme.unit
-
-            component Field: TextField {
-                Layout.fillWidth: true
-                font.family: Theme.fontFamily; font.pixelSize: Theme.fontBody
-                color: Theme.text; placeholderTextColor: Theme.textMuted
-            }
-
-            Field { placeholderText: qsTr("Name") }
-            Field { placeholderText: qsTr("Mobile (unique)"); inputMethodHints: Qt.ImhDialableCharactersOnly }
-            Field { placeholderText: qsTr("Address") }
-            RowLayout {
-                Layout.fillWidth: true; spacing: Theme.unit
-                Field { placeholderText: qsTr("City") }
-                Field { placeholderText: qsTr("PIN"); inputMethodHints: Qt.ImhDigitsOnly }
-            }
-            RowLayout {
-                Layout.fillWidth: true; spacing: Theme.unit
-                Field { placeholderText: qsTr("Birthday") }
-                Field { placeholderText: qsTr("Anniversary") }
-            }
-
-            Text {
-                Layout.fillWidth: true
-                text: qsTr("Create is staged — pending a create-customer command on the engine contract.")
-                color: Theme.textMuted; font.family: Theme.fontFamily; font.pixelSize: Theme.fontSmall
-                wrapMode: Text.WordWrap
-            }
-
-            Item { Layout.fillHeight: true }
-            RowLayout {
-                Layout.fillWidth: true; spacing: Theme.unit
-                Button { Layout.fillWidth: true; text: qsTr("Back"); onClicked: panel.creating = false }
-                Button { Layout.fillWidth: true; text: qsTr("Save"); enabled: false }
-            }
         }
 
         Button {

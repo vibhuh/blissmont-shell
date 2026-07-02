@@ -3,53 +3,111 @@ import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import Blissmont.Shell
 
-// components/ActionBar.qml — zone 4 (spec): bill-scoped, icon-only, UNIFORM action bar.
-// Eight equal-size buttons, no appended amounts (Charge is the same size as the rest).
-// Each carries a tooltip (hover desktop + long-press touch) and a keyboard shortcut hint;
-// enable/disable is driven by cart state. The bar does NOT mutate cart state — it raises
-// `triggered(name)` and the host (BillingScreen) maps the name to a nav/command, so the
-// same handler backs both these buttons and Main.qml's global F-key shortcuts.
+// components/ActionBar.qml — zone 4 (brief §4): the bill-scoped, icon+label, UNIFORM action bar.
+// The final set is the seven business verbs of the current bill:
+//   Charge (F12) · Hold · Discount · Sundry · Print · Void · Tasks ▾
+// "Save" is gone (a software verb, ambiguous in a POS). Sale actions only live here; operational
+// actions live under Tasks ▾ (the ▾ marks a menu, not an immediate action).
+//
+// Tier 1 refinement: each button is icon + a short TEXT LABEL beneath it (the constantly-used
+// bar earns explicit labels over icon-only-with-tooltip). All seven keep an IDENTICAL footprint
+// (equal width via fillWidth, equal height) with consistent icon size, spacing, and full
+// hover/pressed/disabled states. The PRIMARY verb, Charge, is made unmistakable WITHOUT breaking
+// that uniform footprint: it alone carries the accent fill and a bold "₹ Charge" label, so the
+// cashier's eye lands on it at a glance (the squint test). Each button still carries a tooltip
+// (hover + long-press); enable/disable is driven by cart state (and, for Print, by whether a
+// just-settled bill exists to reprint). The bar does NOT mutate state — it raises
+// `triggered(name)` and the host (BillingScreen) maps the name to a nav/command, so the same
+// handler backs both these buttons and Main.qml's global F-keys.
 Rectangle {
     id: bar
     // State the gating reads (host-bound). cartActive == cart has lines (status "active").
     property bool cartActive: false
-    property bool allowReturns: true
+    // canReprint == a bill was just settled this session, so Print can reprint it.
+    property bool canReprint: false
     signal triggered(string name)
 
-    implicitHeight: Theme.actionButton + 2 * Theme.unit
+    // Open the Tasks launcher — called by the Tasks button and by the host's global shortcut.
+    function openTasks() { tasksMenu.popup(tasksBtn, 0, -tasksMenu.height) }
+
+    // Taller than the old icon-only bar to seat the icon + label stack comfortably.
+    implicitHeight: Theme.actionButton + Theme.gap + 2 * Theme.unit
     color: Theme.surface
     radius: Theme.radius
     border.color: Theme.border
 
-    // One uniform action button — icon glyph + tooltip + shortcut hint. Icon-only: the
-    // label/shortcut live in the tooltip, never as appended text (keeps all eight uniform).
+    // One uniform action button — icon (from the single icon family) stacked over a short text
+    // label. All seven stay identical in width AND height; only the colour/weight changes, never
+    // the footprint. Restrained palette: only the PRIMARY verb (Charge) carries the accent fill +
+    // a bold label; Void carries danger; the rest are neutral ghost buttons. Every button has
+    // hover / pressed / disabled states.
     component ActionButton: AbstractButton {
         id: btn
-        property string glyph: ""
+        property string iconName: ""
         property string label: ""
         property string shortcutHint: ""
         property bool danger: false
+        property bool primary: false
         Layout.fillWidth: true
-        Layout.preferredHeight: Theme.actionButton
-        implicitHeight: Theme.actionButton
+        Layout.preferredHeight: Theme.actionButton + Theme.gap
+        implicitHeight: Theme.actionButton + Theme.gap
         hoverEnabled: true
 
-        contentItem: Text {
-            text: btn.glyph
-            color: !btn.enabled ? Theme.textMuted
-                                : (btn.danger ? Theme.danger : Theme.text)
-            font.family: Theme.fontFamily
-            font.pixelSize: Theme.fontLarge
-            horizontalAlignment: Text.AlignHCenter
-            verticalAlignment: Text.AlignVCenter
+        readonly property color fg: !enabled ? Theme.textMuted
+                                    : primary ? Theme.selectionText
+                                    : danger  ? Theme.danger
+                                    : Theme.text
+
+        contentItem: ColumnLayout {
+            spacing: Theme.spaceXs
+            Icon {
+                Layout.alignment: Qt.AlignHCenter
+                name: btn.iconName
+                color: btn.fg
+                size: Theme.iconMd
+            }
+            Text {
+                Layout.alignment: Qt.AlignHCenter
+                Layout.fillWidth: true
+                text: btn.label
+                color: btn.fg
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.fontSmall
+                // The primary verb reads heavier — bold label on the accent fill.
+                font.bold: btn.primary
+                horizontalAlignment: Text.AlignHCenter
+                elide: Text.ElideRight
+            }
         }
         background: Rectangle {
             radius: Theme.radius
-            color: btn.down ? Theme.surfaceAlt : Theme.bg
-            border.width: 1
-            border.color: btn.danger && btn.enabled ? Theme.danger
-                          : (btn.hovered && btn.enabled ? Theme.accent : Theme.border)
-            opacity: btn.enabled ? 1.0 : 0.5
+            color: btn.primary
+                   ? (btn.down ? Qt.darker(Theme.accent, 1.2)
+                               : (btn.hovered ? Qt.lighter(Theme.accent, 1.08) : Theme.accent))
+                   : (btn.down ? Theme.surfaceAlt
+                               : (btn.hovered ? Theme.surfaceAlt : "transparent"))
+            border.width: btn.primary ? 0 : 1
+            // Neutral border at rest; on hover, danger (Void) or accent (the rest). Keeps
+            // the bar calm — the red lives in the Void icon, not a persistent outline.
+            border.color: !btn.enabled ? Theme.border
+                          : (btn.hovered ? (btn.danger ? Theme.danger : Theme.accent)
+                                         : Theme.border)
+            opacity: btn.enabled ? 1.0 : 0.45
+        }
+
+        // Visible shortcut badge (Tier 3.2): a muted Zoho-style hint in the top-right corner so
+        // the keyboard map is discoverable on the surface, not just in the tooltip.
+        Text {
+            visible: btn.shortcutHint !== ""
+            anchors.top: parent.top
+            anchors.right: parent.right
+            anchors.topMargin: Theme.spaceXs
+            anchors.rightMargin: Theme.unit
+            text: btn.shortcutHint
+            color: btn.fg
+            opacity: 0.55
+            font.family: Theme.monoFamily
+            font.pixelSize: 10
         }
 
         // Tooltip: hover (desktop) + long-press (touch). The full label + shortcut live here.
@@ -69,13 +127,20 @@ Rectangle {
         anchors.margins: Theme.unit
         spacing: Theme.unit
 
-        ActionButton { glyph: "\u{1F4BE}"; label: qsTr("Save");    shortcutHint: "F2";  enabled: bar.cartActive; onClicked: bar.triggered("save") }
-        ActionButton { glyph: "\u{1F5A8}"; label: qsTr("Print");   shortcutHint: "";    enabled: bar.cartActive; onClicked: bar.triggered("print") }
-        ActionButton { glyph: "⏸";    label: qsTr("Hold");    shortcutHint: "F7";  enabled: bar.cartActive; onClicked: bar.triggered("hold") }
-        ActionButton { glyph: "↩";    label: qsTr("Return");  shortcutHint: "F9";  enabled: bar.allowReturns; onClicked: bar.triggered("return") }
-        ActionButton { glyph: "\u{1F551}"; label: qsTr("History"); shortcutHint: "F11"; enabled: true; onClicked: bar.triggered("history") }
-        ActionButton { glyph: "…";    label: qsTr("Misc");    shortcutHint: "F6";  enabled: bar.cartActive; onClicked: bar.triggered("misc") }
-        ActionButton { glyph: "✕";    label: qsTr("Clear");   shortcutHint: "F3";  danger: true; enabled: bar.cartActive; onClicked: bar.triggered("clear") }
-        ActionButton { glyph: "₹";    label: qsTr("Charge");  shortcutHint: "F12"; enabled: bar.cartActive; onClicked: bar.triggered("charge") }
+        ActionButton { iconName: "charge";  primary: true; label: Format.currencySymbol + qsTr(" Charge"); shortcutHint: "F12"; enabled: bar.cartActive; onClicked: bar.triggered("charge") }
+        ActionButton { iconName: "hold";    label: qsTr("Hold");     shortcutHint: "F7";  enabled: bar.cartActive; onClicked: bar.triggered("hold") }
+        ActionButton { iconName: "discount"; label: qsTr("Discount"); shortcutHint: "Ctrl+D"; enabled: bar.cartActive && ConfigService.allowDiscounts; onClicked: bar.triggered("discount") }
+        ActionButton { iconName: "sundry";  label: qsTr("Sundry");   shortcutHint: "F6";  enabled: bar.cartActive; onClicked: bar.triggered("sundry") }
+        ActionButton { iconName: "print";   label: qsTr("Print");    shortcutHint: "";    enabled: bar.canReprint; onClicked: bar.triggered("print") }
+        ActionButton { iconName: "void";    label: qsTr("Void");     shortcutHint: "F3";  danger: true; enabled: bar.cartActive; onClicked: bar.triggered("clear") }
+        ActionButton { id: tasksBtn; iconName: "tasks"; label: qsTr("Tasks ▾"); shortcutHint: "F10"; enabled: true; onClicked: bar.openTasks() }
+    }
+
+    // The Tasks launcher popup (brief §5). Selecting an item closes the menu (Menu does that)
+    // and re-raises the chosen action through the bar's own triggered(name), so the host maps
+    // Tasks actions with the same handler as the bar buttons and F-keys.
+    TasksMenu {
+        id: tasksMenu
+        onSelected: (action) => bar.triggered(action)
     }
 }

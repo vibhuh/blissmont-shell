@@ -71,6 +71,8 @@ Item {
             font.pixelSize: Theme.fontBody
             color: Theme.text
             placeholderTextColor: Theme.textMuted
+            // Universal panel keyboard (Tier 3.1): focus the primary field on open.
+            Component.onCompleted: forceActiveFocus()
             onAccepted: confirm.clicked()
         }
 

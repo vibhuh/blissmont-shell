@@ -153,7 +153,7 @@ Item {
                         elide: Text.ElideRight
                     }
                     Text {
-                        text: lineRow.lineTotal
+                        text: Format.money(lineRow.lineTotal)
                         color: Theme.text
                         font.family: Theme.monoFamily
                         font.pixelSize: Theme.fontBody
@@ -163,7 +163,7 @@ Item {
                     Layout.fillWidth: true
                     spacing: Theme.unit
                     Text {
-                        text: qsTr("of %1 (refundable %2)").arg(lineRow.soldQty).arg(lineRow.refundableQty)
+                        text: qsTr("of %1 (refundable %2)").arg(Format.qty(lineRow.soldQty)).arg(Format.qty(lineRow.refundableQty))
                         color: Theme.textMuted
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontBody
@@ -172,7 +172,8 @@ Item {
                     TextField {
                         id: qtyField
                         Layout.preferredWidth: 80
-                        text: lineRow.selectedQty
+                        // Editable; engine parses a bare quantity, so trim raw precision.
+                        text: Format.qty(lineRow.selectedQty)
                         font.family: Theme.monoFamily
                         font.pixelSize: Theme.fontBody
                         color: Theme.text

@@ -48,7 +48,9 @@ TEST(ConfigService, ApplyConfigHydratesPropertiesAndFlipsLoaded) {
     EXPECT_FALSE(cfg.payoutEnabled());
     EXPECT_TRUE(cfg.allowDiscounts());
     EXPECT_EQ(cfg.tenderCompleteMode(), QStringLiteral("auto"));
-    EXPECT_EQ(cfg.currencySymbol(), QStringLiteral("Rs"));
+    // The legacy ASCII "Rs" normalizes to the canonical ₹ glyph (R1.3 — no "Rs" in the
+    // running UI); it is the same currency, just the proper symbol.
+    EXPECT_EQ(cfg.currencySymbol(), QStringLiteral("₹"));
     EXPECT_EQ(spy.count(), 1);
 }
 
