@@ -40,9 +40,13 @@ Item {
     // line in the cart against the dev engine. The `id` here MUST equal the engine's
     // ItemId. When a real catalog/search contract lands, this whole list is replaced by
     // the engine-backed model (see header note) and the alignment becomes moot.
+    // `icon` (Icon.qml glyph name) and/or `image` (source URL/path) are OPTIONAL tile art
+    // for grid mode (R2.4); the engine-backed catalog will populate them later. Items with
+    // neither fall back to a name monogram. Widget/Gadget carry a glyph; the test item is
+    // left bare on purpose to exercise the monogram fallback.
     readonly property var catalog: [
-        { id: "ITEM-A",    name: "Widget",          sku: "SKU-A",   barcode: "111",     price: "100.00", category: "Hardware", hsn: "—", gst: "18" },
-        { id: "ITEM-B",    name: "Gadget",          sku: "SKU-B",   barcode: "222",     price: "250.00", category: "Hardware", hsn: "—", gst: "18" },
+        { id: "ITEM-A",    name: "Widget",          sku: "SKU-A",   barcode: "111",     price: "100.00", category: "Hardware", hsn: "—", gst: "18", icon: "box" },
+        { id: "ITEM-B",    name: "Gadget",          sku: "SKU-B",   barcode: "222",     price: "250.00", category: "Hardware", hsn: "—", gst: "18", icon: "box" },
         { id: "ITEM-TEST", name: "Smoke Test Item", sku: "TESTSKU", barcode: "TESTSKU", price: "100.00", category: "Test",     hsn: "—", gst: "18" }
     ]
 
@@ -260,7 +264,11 @@ Item {
             }
         }
 
-        // ── Quick-keys: GRID model (≥64px touch tiles) — same controller, touch-first ──
+        // ── Quick-keys: GRID model (touch tiles) — same controller, touch-first ──
+        // Touch tiles carry ART (R2.4): a per-item image (item.image) or a line icon from
+        // the one Icon family (item.icon); when the catalog gives neither, a name monogram
+        // so every tile still reads as a deliberate button. The engine-backed catalog can
+        // populate image/icon later with no layout change.
         GridView {
             id: gridView
             visible: panel.catalogMode === "grid"
@@ -268,8 +276,11 @@ Item {
             Layout.fillHeight: true
             clip: true
             model: lookup
-            cellWidth: Math.max(Theme.touchMin + Theme.gap, width / Math.max(1, Math.floor(width / (Theme.touchMin + Theme.gap))))
-            cellHeight: Theme.touchMin + Theme.gap
+            // Roomier tile than the bare 64px min so art + name + price breathe, still well
+            // above the ≥64px touch-target minimum. Square-ish, packed to fill the width.
+            readonly property int minTile: Theme.touchMin + Theme.iconLg + Theme.unit
+            cellWidth: Math.max(minTile, width / Math.max(1, Math.floor(width / minTile)))
+            cellHeight: gridView.cellWidth + Theme.gap
             delegate: Item {
                 id: tile
                 required property var item
@@ -281,15 +292,58 @@ Item {
                     radius: Theme.radius
                     color: tileTap.pressed ? Theme.surfaceAlt : Theme.bg
                     border.color: Theme.border
-                    // Tiles meet the ≥64px touch-target minimum (spec).
                     implicitWidth: Theme.touchMin
                     implicitHeight: Theme.touchMin
                     ColumnLayout {
                         anchors.fill: parent
                         anchors.margins: Theme.unit
-                        spacing: 2
-                        Text { text: tile.item.name; color: Theme.text; font.family: Theme.fontFamily; font.pixelSize: Theme.fontSmall; wrapMode: Text.WordWrap; maximumLineCount: 2; elide: Text.ElideRight; Layout.fillWidth: true; Layout.fillHeight: true }
-                        Text { text: Format.money(tile.item.price); color: Theme.textMuted; font.family: Theme.monoFamily; font.pixelSize: Theme.fontSmall }
+                        spacing: Theme.unit / 2
+                        // ── Tile art (R2.4): image › icon › monogram, in priority order ──
+                        Item {
+                            id: art
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            Layout.minimumHeight: Theme.iconLg
+                            readonly property string src:   tile.item.image !== undefined ? tile.item.image : ""
+                            readonly property string glyph: tile.item.icon  !== undefined ? tile.item.icon  : ""
+                            // Per-item image (engine-backed catalog): cropped square, rounded.
+                            Image {
+                                anchors.centerIn: parent
+                                width: Math.min(parent.width, parent.height)
+                                height: width
+                                visible: art.src !== "" && status === Image.Ready
+                                source: art.src
+                                fillMode: Image.PreserveAspectCrop
+                                asynchronous: true
+                                cache: true
+                                clip: true
+                            }
+                            // Line icon from the one family (Icon.qml).
+                            Icon {
+                                anchors.centerIn: parent
+                                visible: art.src === "" && art.glyph !== ""
+                                name: art.glyph
+                                size: Theme.iconLg
+                                color: Theme.textMuted
+                            }
+                            // Fallback: first-letter monogram so a bare item still reads as a tile.
+                            Rectangle {
+                                anchors.centerIn: parent
+                                visible: art.src === "" && art.glyph === ""
+                                width: Theme.iconLg + Theme.unit
+                                height: width
+                                radius: Theme.radiusSmall
+                                color: Theme.surfaceAlt
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: (tile.item.name && tile.item.name.length > 0) ? tile.item.name.charAt(0).toUpperCase() : "?"
+                                    color: Theme.textMuted
+                                    font.family: Theme.fontFamily; font.pixelSize: Theme.fontBody; font.bold: true
+                                }
+                            }
+                        }
+                        Text { text: tile.item.name; color: Theme.text; font.family: Theme.fontFamily; font.pixelSize: Theme.fontSmall; wrapMode: Text.WordWrap; maximumLineCount: 2; elide: Text.ElideRight; horizontalAlignment: Text.AlignHCenter; Layout.fillWidth: true }
+                        Text { text: Format.money(tile.item.price); color: Theme.textMuted; font.family: Theme.monoFamily; font.pixelSize: Theme.fontSmall; horizontalAlignment: Text.AlignHCenter; Layout.fillWidth: true }
                     }
                     TapHandler { id: tileTap; onTapped: panel.pick(tile.item) }
                 }
