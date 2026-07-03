@@ -35,7 +35,8 @@ Item {
         "chevronDown":  "M6 9 L12 15 L18 9",
         "chevronLeft":  "M15 6 L9 12 L15 18",
         "price":    "M13 4 H20 V11 L11.5 19.5 a1.5 1.5 0 0 1 -2.1 0 L4.5 14.6 a1.5 1.5 0 0 1 0 -2.1 L13 4 Z M16.5 7.5 a1 1 0 1 0 0.01 0",  // tag
-        "grid":     "M4 4 H10 V10 H4 Z M14 4 H20 V10 H14 Z M4 14 H10 V20 H4 Z M14 14 H20 V20 H14 Z"
+        "grid":     "M4 4 H10 V10 H4 Z M14 4 H20 V10 H14 Z M4 14 H10 V20 H4 Z M14 14 H20 V20 H14 Z",
+        "box":      "M4 8 L12 4 L20 8 L12 12 Z M4 8 V16 L12 20 L20 16 V8 M12 12 V20"   // package / generic item (grid tiles)
     })
 
     Item {
