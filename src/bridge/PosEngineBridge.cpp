@@ -111,7 +111,13 @@ void PosEngineBridge::applyEvent(const Event& evt) {
         case E::kShiftClosed:
             emit shiftClosed(QString::fromStdString(evt.shift_closed().opening_float_str()),
                              QString::fromStdString(evt.shift_closed().counted_cash_str()),
-                             QString::fromStdString(evt.shift_closed().variance_str()));
+                             QString::fromStdString(evt.shift_closed().variance_str()),
+                             QString::fromStdString(evt.shift_closed().expected_cash_str()),
+                             QString::fromStdString(evt.shift_closed().cash_sales_str()),
+                             QString::fromStdString(evt.shift_closed().cash_in_str()),
+                             QString::fromStdString(evt.shift_closed().cash_out_str()),
+                             QString::fromStdString(evt.shift_closed().payouts_str()),
+                             QString::fromStdString(evt.shift_closed().refunds_str()));
             break;
         case E::kSyncStatusChanged:
             emit syncStatusChanged(evt.sync_status_changed().online(),

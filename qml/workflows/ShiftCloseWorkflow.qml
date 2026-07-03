@@ -6,10 +6,12 @@ import Blissmont.Shell
 // workflows/ShiftCloseWorkflow.qml — the Shift-close FULL-SCREEN workflow (UX §12).
 //
 // Blind denomination count: the cashier keys note/coin counts WITHOUT seeing the expected cash;
-// the engine sums the counted total, computes the variance (counted − opening), and reveals both
-// only AFTER commit (ShiftClosed, terminal v1.8.0) — blind-count integrity. An over-tolerance
-// variance may be held for supervisor sign-off (AuthRequired). Full-screen, never a modal; the
-// engine owns the close and the arithmetic. Keyboard-first (Enter in a count field commits).
+// the engine sums the counted total, reconciles it against EXPECTED cash (opening + cash sales +
+// cash-in − cash-out − payouts − refunds — the same figure the Z-report prints), computes the
+// variance (counted − expected), and reveals the full reconciliation only AFTER commit
+// (ShiftClosed, terminal v1.9.0) — blind-count integrity. An over-tolerance variance may be held
+// for supervisor sign-off (AuthRequired). Full-screen, never a modal; the engine owns the close
+// and the arithmetic. Keyboard-first (Enter in a count field commits).
 Item {
     id: root
     signal closed()
@@ -17,10 +19,17 @@ Item {
     // count → closing → done | auth
     property string phase: "count"
     property real   countedTotal: 0
-    // Revealed only in the done phase (blind-count integrity).
+    // Revealed only in the done phase (blind-count integrity). expectedCash and its breakdown
+    // (v1.9.0) let the reveal show what the drawer SHOULD have held and why.
     property string openingFloat: ""
     property string countedCash: ""
     property string variance: ""
+    property string expectedCash: ""
+    property string cashSales: ""
+    property string cashIn: ""
+    property string cashOut: ""
+    property string payouts: ""
+    property string refunds: ""
     property string authReason: ""
 
     focus: true
@@ -77,11 +86,18 @@ Item {
 
     Connections {
         target: PosEngineBridge
-        function onShiftClosed(openingFloat, countedCash, variance) {
+        function onShiftClosed(openingFloat, countedCash, variance,
+                               expectedCash, cashSales, cashIn, cashOut, payouts, refunds) {
             if (root.phase !== "closing") return
             root.openingFloat = openingFloat
             root.countedCash = countedCash
             root.variance = variance
+            root.expectedCash = expectedCash
+            root.cashSales = cashSales
+            root.cashIn = cashIn
+            root.cashOut = cashOut
+            root.payouts = payouts
+            root.refunds = refunds
             root.phase = "done"
         }
         function onAuthRequired(action, reason) {
@@ -206,16 +222,48 @@ Item {
                     text: qsTr("Shift closed")
                     color: Theme.ok; font.family: Theme.fontFamily; font.pixelSize: Theme.fontLarge; font.bold: true
                 }
+                // Expected-cash reconciliation: the breakdown that builds Expected, then the
+                // Counted total and the variance (counted − expected). Zero-valued movement rows
+                // are hidden to keep the reveal readable.
                 GridLayout {
                     Layout.fillWidth: true; columns: 2; columnSpacing: Theme.gap; rowSpacing: Theme.unit
+
+                    // — components of expected —
                     Text { text: qsTr("Opening float"); color: Theme.textMuted; font.family: Theme.fontFamily; font.pixelSize: Theme.fontBody }
                     Text { Layout.fillWidth: true; horizontalAlignment: Text.AlignRight; text: Format.money(root.openingFloat); color: Theme.text; font.family: Theme.monoFamily; font.pixelSize: Theme.fontBody }
+
+                    Text { text: qsTr("Cash sales"); color: Theme.textMuted; font.family: Theme.fontFamily; font.pixelSize: Theme.fontBody }
+                    Text { Layout.fillWidth: true; horizontalAlignment: Text.AlignRight; text: "+ " + Format.money(root.cashSales); color: Theme.text; font.family: Theme.monoFamily; font.pixelSize: Theme.fontBody }
+
+                    Text { visible: Number(root.cashIn) !== 0; text: qsTr("Cash in"); color: Theme.textMuted; font.family: Theme.fontFamily; font.pixelSize: Theme.fontBody }
+                    Text { visible: Number(root.cashIn) !== 0; Layout.fillWidth: true; horizontalAlignment: Text.AlignRight; text: "+ " + Format.money(root.cashIn); color: Theme.text; font.family: Theme.monoFamily; font.pixelSize: Theme.fontBody }
+
+                    Text { visible: Number(root.cashOut) !== 0; text: qsTr("Cash out"); color: Theme.textMuted; font.family: Theme.fontFamily; font.pixelSize: Theme.fontBody }
+                    Text { visible: Number(root.cashOut) !== 0; Layout.fillWidth: true; horizontalAlignment: Text.AlignRight; text: "− " + Format.money(root.cashOut); color: Theme.text; font.family: Theme.monoFamily; font.pixelSize: Theme.fontBody }
+
+                    Text { visible: Number(root.payouts) !== 0; text: qsTr("Payouts"); color: Theme.textMuted; font.family: Theme.fontFamily; font.pixelSize: Theme.fontBody }
+                    Text { visible: Number(root.payouts) !== 0; Layout.fillWidth: true; horizontalAlignment: Text.AlignRight; text: "− " + Format.money(root.payouts); color: Theme.text; font.family: Theme.monoFamily; font.pixelSize: Theme.fontBody }
+
+                    Text { visible: Number(root.refunds) !== 0; text: qsTr("Refunds"); color: Theme.textMuted; font.family: Theme.fontFamily; font.pixelSize: Theme.fontBody }
+                    Text { visible: Number(root.refunds) !== 0; Layout.fillWidth: true; horizontalAlignment: Text.AlignRight; text: "− " + Format.money(root.refunds); color: Theme.text; font.family: Theme.monoFamily; font.pixelSize: Theme.fontBody }
+
+                    // — expected (subtotal) —
+                    Rectangle { Layout.columnSpan: 2; Layout.fillWidth: true; implicitHeight: 1; color: Theme.border }
+                    Text { text: qsTr("Expected cash"); color: Theme.text; font.family: Theme.fontFamily; font.pixelSize: Theme.fontBody; font.bold: true }
+                    Text { Layout.fillWidth: true; horizontalAlignment: Text.AlignRight; text: Format.money(root.expectedCash); color: Theme.text; font.family: Theme.monoFamily; font.pixelSize: Theme.fontBody; font.bold: true }
+
                     Text { text: qsTr("Counted cash"); color: Theme.textMuted; font.family: Theme.fontFamily; font.pixelSize: Theme.fontBody }
                     Text { Layout.fillWidth: true; horizontalAlignment: Text.AlignRight; text: Format.money(root.countedCash); color: Theme.text; font.family: Theme.monoFamily; font.pixelSize: Theme.fontBody }
+
+                    // — variance = counted − expected —
+                    Rectangle { Layout.columnSpan: 2; Layout.fillWidth: true; implicitHeight: 1; color: Theme.border }
                     Text { text: qsTr("Variance"); color: Theme.textMuted; font.family: Theme.fontFamily; font.pixelSize: Theme.fontLarge }
                     Text {
                         Layout.fillWidth: true; horizontalAlignment: Text.AlignRight
+                        // Negative = short, positive = over; label it so the sign is unambiguous.
                         text: Format.money(root.variance)
+                              + (Number(root.variance) < 0 ? qsTr("  (short)")
+                                 : Number(root.variance) > 0 ? qsTr("  (over)") : "")
                         color: Number(root.variance) === 0 ? Theme.ok : Theme.warn
                         font.family: Theme.monoFamily; font.pixelSize: Theme.fontLarge; font.bold: true
                     }
