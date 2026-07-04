@@ -106,10 +106,11 @@ public:
     Q_INVOKABLE void openShift(const QString& cashierUserId, const QString& openingCashStr);
     // Shift close (UX §12, blind denomination count). denominations is a list of {unit, count}
     // maps (rupee note/coin value → count keyed). The engine sums them (Σ unit×count) as the
-    // counted cash, computes variance = counted − opening, and replies with ShiftClosed
-    // (variance revealed only AFTER commit), or AuthRequired(close_shift_variance) when the
-    // variance exceeds tolerance and the config demands sign-off. closingCashStr carries the
-    // same total for a single-total count mode.
+    // counted cash, reconciles it against EXPECTED cash (opening + cash sales + cash-in −
+    // cash-out − payouts − refunds — the same figure the Z-report prints), computes variance =
+    // counted − expected, and replies with ShiftClosed (figures revealed only AFTER commit), or
+    // AuthRequired(close_shift_variance) when the variance exceeds tolerance and the config
+    // demands sign-off. closingCashStr carries the same total for a single-total count mode.
     Q_INVOKABLE void closeShift(const QVariantList& denominations, const QString& closingCashStr);
     // Suspend/resume (UX §10) — drafts are terminal-local. holdCart parks the current cart
     // (the engine echoes the minted id via cartHeld); resumeCart restores one by id (the
@@ -127,9 +128,13 @@ signals:
     void itemNotFound(const QString& barcode);
     void commandRejected(const QString& code, const QString& message);
     void shiftStateChanged(const QString& shiftId, const QString& status);
-    // Blind-count reveal after a successful CloseShift (terminal v1.8.0): the opening float, the
-    // counted cash, and the variance (counted − opening; may be negative).
-    void shiftClosed(const QString& openingFloat, const QString& countedCash, const QString& variance);
+    // Blind-count reveal after a successful CloseShift: the opening float, the counted cash, the
+    // variance (counted − expected; negative = short, positive = over), and — additive in
+    // terminal v1.9.0 — the full drawer reconciliation the variance is measured against:
+    // expected cash and the components (cash sales, cash-in/out, payouts, refunds) that make it up.
+    void shiftClosed(const QString& openingFloat, const QString& countedCash, const QString& variance,
+                     const QString& expectedCash, const QString& cashSales, const QString& cashIn,
+                     const QString& cashOut, const QString& payouts, const QString& refunds);
     void syncStatusChanged(bool online, int pending);
     // Device config relayed by the engine over the Session stream (contracts
     // v1.1.0; payment methods added in v1.2.0). Emitted on connect, on reconnect,
