@@ -26,10 +26,14 @@ ApplicationWindow {
         // with no re-sync logic — the same pattern as sync status above.
         function onConfigUpdated(allowReturns, payoutEnabled, allowDiscounts, tenderCompleteMode, currencySymbol, paymentMethods,
                                  allowBlindReturn, refundTenderMode, returnRequiresAuth, restockDefault, allowPartialReturn, heldCartExpiry,
-                                 payoutCategories, storeName, registerName) {
+                                 payoutCategories, storeName, registerName,
+                                 shiftManagementMode, requireAuthBeforeStart, requireAuthAfterEnd, requireAuthDifferentShift,
+                                 requireAuthReopenCompleted, shiftMasters) {
             ConfigService.applyConfig(allowReturns, payoutEnabled, allowDiscounts, tenderCompleteMode, currencySymbol, paymentMethods,
                                       allowBlindReturn, refundTenderMode, returnRequiresAuth, restockDefault, allowPartialReturn, heldCartExpiry,
-                                      payoutCategories, storeName, registerName)
+                                      payoutCategories, storeName, registerName,
+                                      shiftManagementMode, requireAuthBeforeStart, requireAuthAfterEnd, requireAuthDifferentShift,
+                                      requireAuthReopenCompleted, shiftMasters)
         }
     }
 

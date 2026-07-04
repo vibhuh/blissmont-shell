@@ -88,6 +88,7 @@ set(SHELL_QML_FILES
   components/ActionBar.qml
   components/TasksMenu.qml
   components/SaleCompleteOverlay.qml
+  components/SupervisorAuthDialog.qml
   components/TotalsBlock.qml
   components/CustomerBlock.qml
   theme/Theme.qml)
@@ -133,6 +134,7 @@ qt_add_qml_module(shell
     ${CMAKE_SOURCE_DIR}/qml/components/ActionBar.qml
     ${CMAKE_SOURCE_DIR}/qml/components/TasksMenu.qml
     ${CMAKE_SOURCE_DIR}/qml/components/SaleCompleteOverlay.qml
+    ${CMAKE_SOURCE_DIR}/qml/components/SupervisorAuthDialog.qml
     ${CMAKE_SOURCE_DIR}/qml/components/TotalsBlock.qml
     ${CMAKE_SOURCE_DIR}/qml/components/CustomerBlock.qml
     ${CMAKE_SOURCE_DIR}/qml/theme/Theme.qml

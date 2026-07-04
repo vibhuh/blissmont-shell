@@ -16,9 +16,16 @@ Item {
     id: root
     signal closed()
 
-    // count → closing → done | auth
+    // count → closing → done | auth | error
+    //   auth  = engine held an over-tolerance variance (AuthRequired) → supervisor dialog → re-issue
+    //   error = the close was rejected for another reason → read-only notice, no re-issue
     property string phase: "count"
     property real   countedTotal: 0
+    // Retained from the count so an auth re-issue resends the SAME drawer count + total with the
+    // supervisor attestation attached (the engine re-reconciles identically and clears the hold).
+    property var    pendingDenoms: []
+    property string pendingClosingCash: ""
+    property string errorMessage: ""
     // Revealed only in the done phase (blind-count integrity). expectedCash and its breakdown
     // (v1.9.0) let the reveal show what the drawer SHOULD have held and why.
     property string openingFloat: ""
@@ -34,7 +41,9 @@ Item {
 
     focus: true
     Component.onCompleted: root.forceActiveFocus()
-    onPhaseChanged: if (root.phase !== "count") root.forceActiveFocus()
+    // Pull focus back to the root when leaving the count phase so Enter/Esc drive the primary/cancel
+    // — EXCEPT in the auth phase, where the supervisor dialog owns focus (it grabs its own field).
+    onPhaseChanged: if (root.phase !== "count" && root.phase !== "auth") root.forceActiveFocus()
 
     // Note & coin denominations the drawer holds (blind — no expected shown).
     ListModel {
@@ -66,23 +75,35 @@ Item {
             var r = denomModel.get(i)
             if (r.count > 0) denoms.push({ unit: r.unit, count: r.count })
         }
+        root.pendingDenoms = denoms
+        root.pendingClosingCash = String(root.countedTotal)
         root.phase = "closing"
-        PosEngineBridge.closeShift(denoms, String(root.countedTotal))
+        PosEngineBridge.closeShift(denoms, root.pendingClosingCash)
+    }
+
+    // Re-issue the held close with the supervisor attestation (SupervisorAuth). Same drawer count,
+    // same total — only the auth is added, so the engine re-reconciles to the same variance and,
+    // seeing the attestation, commits instead of holding.
+    function reissueWithAuth(reason, authorizedBy) {
+        root.phase = "closing"
+        PosEngineBridge.closeShift(root.pendingDenoms, root.pendingClosingCash, reason, authorizedBy)
     }
 
     function primary() {
         switch (root.phase) {
         case "count":   root.commit(); break
         case "closing": break
-        default:        root.closed()   // done / auth → leave
+        case "auth":    break            // the supervisor dialog owns its own actions
+        default:        root.closed()    // done / error → leave
         }
     }
 
     Keys.onEscapePressed: (e) => { root.closed(); e.accepted = true }
-    // Enter in a count field commits (the field's onAccepted); in done/auth it drives the
-    // primary from the root (which holds focus once the count fields are disabled).
-    Keys.onReturnPressed: (e) => { if (root.phase !== "count") { root.primary(); e.accepted = true } }
-    Keys.onEnterPressed:  (e) => { if (root.phase !== "count") { root.primary(); e.accepted = true } }
+    // Enter in a count field commits (the field's onAccepted); in done/error it drives the primary
+    // from the root. In the auth phase the supervisor dialog handles keys (it holds focus), so the
+    // root stays out of the way.
+    Keys.onReturnPressed: (e) => { if (root.phase !== "count" && root.phase !== "auth") { root.primary(); e.accepted = true } }
+    Keys.onEnterPressed:  (e) => { if (root.phase !== "count" && root.phase !== "auth") { root.primary(); e.accepted = true } }
 
     Connections {
         target: PosEngineBridge
@@ -107,8 +128,8 @@ Item {
         }
         function onCommandRejected(code, message) {
             if (root.phase !== "closing") return
-            root.authReason = message
-            root.phase = "auth"
+            root.errorMessage = message !== "" ? message : qsTr("Could not close the shift")
+            root.phase = "error"
         }
     }
 
@@ -271,23 +292,24 @@ Item {
             }
         }
 
-        // ── Auth / error ─────────────────────────────────────────────────────────
+        // ── Error (non-auth rejection) ───────────────────────────────────────────
         Rectangle {
-            visible: root.phase === "auth"
+            visible: root.phase === "error"
             Layout.fillWidth: true
-            implicitHeight: authText.implicitHeight + 2 * Theme.pad
+            implicitHeight: errorText.implicitHeight + 2 * Theme.pad
             radius: Theme.radius; color: Theme.surface; border.color: Theme.danger; border.width: 1
             Text {
-                id: authText
+                id: errorText
                 anchors.fill: parent; anchors.margins: Theme.pad
                 wrapMode: Text.WordWrap
-                text: root.authReason
+                text: root.errorMessage
                 color: Theme.danger; font.family: Theme.fontFamily; font.pixelSize: Theme.fontBody
             }
         }
 
-        // ── Actions ──────────────────────────────────────────────────────────────
+        // ── Actions (the auth phase hides these — the supervisor dialog owns its own) ──
         RowLayout {
+            visible: root.phase !== "auth"
             Layout.fillWidth: true
             spacing: Theme.gap
             Button {
@@ -313,7 +335,7 @@ Item {
                 enabled: root.phase !== "closing"
                 text: root.phase === "count" ? qsTr("Close Shift  (Enter)")
                     : root.phase === "closing" ? qsTr("Closing…")
-                    : root.phase === "auth" ? qsTr("OK  (Enter)")
+                    : root.phase === "error" ? qsTr("OK  (Enter)")
                     : qsTr("Done  (Enter)")
                 onClicked: root.primary()
                 contentItem: Text {
@@ -326,12 +348,26 @@ Item {
                     implicitHeight: Theme.actionButton
                     radius: Theme.radius
                     color: !primaryBtn.enabled ? Theme.surface
-                         : root.phase === "auth" ? Theme.danger
+                         : root.phase === "error" ? Theme.danger
                          : root.phase === "done" ? Theme.ok
                          : Theme.accent
                     border.color: background.color
                 }
             }
         }
+    }
+
+    // ── Supervisor authorization (over-tolerance variance hold) ──────────────────
+    // The completion half of AuthRequired(close_shift_variance): the engine held the close because
+    // the drawer variance exceeds tolerance; the supervisor attests and we re-issue the SAME count
+    // with SupervisorAuth. Cancelling abandons the close (the session stays open — the cashier can
+    // recount and retry). This is the ONE dialog, shared with the Begin-Register open-policy gate.
+    SupervisorAuthDialog {
+        active: root.phase === "auth"
+        blockedReason: root.authReason
+        heading: qsTr("Supervisor authorization · variance")
+        confirmText: qsTr("Authorize & Close")
+        onAuthorized: (reason, authorizedBy) => root.reissueWithAuth(reason, authorizedBy)
+        onCancelled: root.closed()
     }
 }
