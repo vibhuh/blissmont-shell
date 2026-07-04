@@ -49,7 +49,10 @@ void ConfigService::applyConfig(bool allowReturns, bool payoutEnabled, bool allo
                                 bool restockDefault, bool allowPartialReturn,
                                 const QString& heldCartExpiry,
                                 const QStringList& payoutCategories,
-                                const QString& storeName, const QString& registerName) {
+                                const QString& storeName, const QString& registerName,
+                                const QString& shiftManagementMode, bool requireAuthBeforeStart,
+                                bool requireAuthAfterEnd, bool requireAuthDifferentShift,
+                                bool requireAuthReopenCompleted, const QVariantList& shiftMasters) {
     const QVariantList methods = enabledSorted(paymentMethods);
     const QString symbol = canonicalSymbol(currencySymbol);
     if (loaded_ && allowReturns_ == allowReturns && payoutEnabled_ == payoutEnabled &&
@@ -59,7 +62,13 @@ void ConfigService::applyConfig(bool allowReturns, bool payoutEnabled, bool allo
         allowBlindReturn_ == allowBlindReturn && refundTenderMode_ == refundTenderMode &&
         returnRequiresAuth_ == returnRequiresAuth && restockDefault_ == restockDefault &&
         allowPartialReturn_ == allowPartialReturn && heldCartExpiry_ == heldCartExpiry &&
-        storeName_ == storeName && registerName_ == registerName) {
+        storeName_ == storeName && registerName_ == registerName &&
+        shiftManagementMode_ == shiftManagementMode &&
+        requireAuthBeforeStart_ == requireAuthBeforeStart &&
+        requireAuthAfterEnd_ == requireAuthAfterEnd &&
+        requireAuthDifferentShift_ == requireAuthDifferentShift &&
+        requireAuthReopenCompleted_ == requireAuthReopenCompleted &&
+        shiftMasters_ == shiftMasters) {
         return;  // unchanged — no spurious notify on every reconnect
     }
     loaded_ = true;
@@ -78,6 +87,12 @@ void ConfigService::applyConfig(bool allowReturns, bool payoutEnabled, bool allo
     heldCartExpiry_ = heldCartExpiry;
     storeName_ = storeName;
     registerName_ = registerName;
+    shiftManagementMode_ = shiftManagementMode;
+    requireAuthBeforeStart_ = requireAuthBeforeStart;
+    requireAuthAfterEnd_ = requireAuthAfterEnd;
+    requireAuthDifferentShift_ = requireAuthDifferentShift;
+    requireAuthReopenCompleted_ = requireAuthReopenCompleted;
+    shiftMasters_ = shiftMasters;
     emit changed();
 }
 

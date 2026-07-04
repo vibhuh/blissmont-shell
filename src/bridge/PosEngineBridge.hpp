@@ -103,7 +103,15 @@ public:
     // ShiftStateChanged(open) on success, or CommandRejected(SHIFT_ALREADY_OPEN) if one is
     // already open. cashierUserId identifies the opening cashier (no shell login yet — a
     // device-default is passed for now).
-    Q_INVOKABLE void openShift(const QString& cashierUserId, const QString& openingCashStr);
+    // shiftMasterId classifies a SCHEDULED-mode session (empty in SINGLE/MULTIPLE). authReason +
+    // authorizedBy carry a supervisor attestation on a RE-ISSUE after AuthRequired(open_session_policy):
+    // the shell verifies the supervisor device-side (attestation-only for now — no device credential
+    // store yet), and the engine trusts the same-device SupervisorAuth and skips the policy gate. Both
+    // empty on the first (ungated) attempt.
+    Q_INVOKABLE void openShift(const QString& cashierUserId, const QString& openingCashStr,
+                               const QString& shiftMasterId = QString(),
+                               const QString& authReason = QString(),
+                               const QString& authorizedBy = QString());
     // Shift close (UX §12, blind denomination count). denominations is a list of {unit, count}
     // maps (rupee note/coin value → count keyed). The engine sums them (Σ unit×count) as the
     // counted cash, reconciles it against EXPECTED cash (opening + cash sales + cash-in −
@@ -111,7 +119,12 @@ public:
     // counted − expected, and replies with ShiftClosed (figures revealed only AFTER commit), or
     // AuthRequired(close_shift_variance) when the variance exceeds tolerance and the config
     // demands sign-off. closingCashStr carries the same total for a single-total count mode.
-    Q_INVOKABLE void closeShift(const QVariantList& denominations, const QString& closingCashStr);
+    // authReason + authorizedBy carry a supervisor attestation on a RE-ISSUE after
+    // AuthRequired(close_shift_variance) — same mechanism as openShift's SupervisorAuth. Both empty on
+    // the first (ungated) close; the engine holds an over-tolerance variance until they're supplied.
+    Q_INVOKABLE void closeShift(const QVariantList& denominations, const QString& closingCashStr,
+                                const QString& authReason = QString(),
+                                const QString& authorizedBy = QString());
     // Suspend/resume (UX §10) — drafts are terminal-local. holdCart parks the current cart
     // (the engine echoes the minted id via cartHeld); resumeCart restores one by id (the
     // engine re-emits CartUpdated with status="held"); listHeldCarts fills the held-cart model.
@@ -156,7 +169,17 @@ signals:
                        const QStringList& payoutCategories,
                        // Store + register identity for the top bar (contracts v1.6.0:
                        // store_name already on the wire; register_name device-local).
-                       const QString& storeName, const QString& registerName);
+                       const QString& storeName, const QString& registerName,
+                       // Shift management (contracts v1.10.0): the mode drives which Begin-Register
+                       // screen the shell shows; the four require_auth_* bools are the uniform
+                       // supervisor-auth policy the engine gates SCHEDULED opens on; shiftMasters is
+                       // the company's shift definitions (QVariantList of QVariantMap
+                       // {id, code, name, startTime, endTime, sequence, isActive}), non-empty only in
+                       // SCHEDULED mode. ConfigService projects them to QML.
+                       const QString& shiftManagementMode,
+                       bool requireAuthBeforeStart, bool requireAuthAfterEnd,
+                       bool requireAuthDifferentShift, bool requireAuthReopenCompleted,
+                       const QVariantList& shiftMasters);
     void authRequired(const QString& action, const QString& reason);
     // A payout was recorded (UX §12): the engine echoes the provisional/local payout id,
     // amount and category after RecordPayout. The shell surfaces this as the payout

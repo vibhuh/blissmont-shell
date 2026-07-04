@@ -53,8 +53,13 @@ Menu {
     TaskItem { text: qsTr("X Report");    taskAction: "xreport" }
     // Shift / day lifecycle (UX §12). Begin Day opens a shift (only when none is open);
     // Close Shift ends the open one; Z Report closes the store's day.
-    TaskItem { text: qsTr("Begin Day");   taskAction: "beginday";   enabled: !menu.shiftOpen }
-    TaskItem { text: qsTr("Close Shift"); taskAction: "closeshift"; enabled: menu.shiftOpen }
+    // In SINGLE shift-management mode there is no explicit shift lifecycle — the register is opened
+    // implicitly (auto Open-Register prompt) and closed at EOD — so these two items are hidden
+    // (register-session slice, contracts v1.10.0). Z Report (the day close) stays in every mode.
+    TaskItem { text: qsTr("Begin Day");   taskAction: "beginday";   enabled: !menu.shiftOpen
+               visible: ConfigService.shiftManagementMode !== "single" }
+    TaskItem { text: qsTr("Close Shift"); taskAction: "closeshift"; enabled: menu.shiftOpen
+               visible: ConfigService.shiftManagementMode !== "single" }
     TaskItem { text: qsTr("Z Report");    taskAction: "zreport" }
     MenuSeparator {}
     TaskItem { text: qsTr("Calculator");  taskAction: "calculator" }

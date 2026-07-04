@@ -17,6 +17,18 @@ void TenderViewModel::setBridge(blissmont::bridge::PosEngineBridge* bridge) {
         connect(bridge_->summary(), &blissmont::models::CartSummary::changed, this,
                 &TenderViewModel::onBalanceChanged);
     }
+    // Surface a rejected command in the tender status line. The settle path is fire-and-forget
+    // (complete() / an armed tenderAndComplete both just write Settle), so without this a reject —
+    // most visibly NO_OPEN_SHIFT ("Open a shift before settling") when no register session is open —
+    // is swallowed and pressing Complete looks like a no-op. Mirrors PayoutViewModel/ReturnViewModel,
+    // which surface commandRejected verbatim.
+    if (bridge_) {
+        connect(bridge_, &blissmont::bridge::PosEngineBridge::commandRejected, this,
+                [this](const QString& code, const QString& message) {
+                    completeArmed_ = false;  // a rejected settle disarms the auto-complete
+                    setStatus(message.isEmpty() ? code : message);
+                });
+    }
     emit bridgeChanged();
     emit stateChanged();
 }

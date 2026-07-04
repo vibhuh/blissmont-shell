@@ -149,6 +149,23 @@ void PosEngineBridge::applyEvent(const Event& evt) {
             for (const auto& key : cfg.payout_categories()) {
                 payoutCategories.push_back(QString::fromStdString(key));
             }
+            // Shift management (contracts v1.10.0): mode + policy bools + the company's shift
+            // definitions. Classification only — cash accountability is identical across modes,
+            // so nothing here touches the cart/settle path; the shell gates which Begin-Register
+            // screen shows and which Tasks items appear.
+            QVariantList shiftMasters;
+            shiftMasters.reserve(cfg.shift_masters_size());
+            for (const auto& sm : cfg.shift_masters()) {
+                QVariantMap row;
+                row[QStringLiteral("id")] = QString::fromStdString(sm.id());
+                row[QStringLiteral("code")] = QString::fromStdString(sm.code());
+                row[QStringLiteral("name")] = QString::fromStdString(sm.name());
+                row[QStringLiteral("startTime")] = QString::fromStdString(sm.start_time());
+                row[QStringLiteral("endTime")] = QString::fromStdString(sm.end_time());
+                row[QStringLiteral("sequence")] = sm.sequence();
+                row[QStringLiteral("isActive")] = sm.is_active();
+                shiftMasters.push_back(row);
+            }
             emit configUpdated(cfg.allow_returns(), cfg.payout_enabled(),
                                cfg.allow_discounts(),
                                QString::fromStdString(cfg.tender_complete_mode()),
@@ -162,7 +179,11 @@ void PosEngineBridge::applyEvent(const Event& evt) {
                                QString::fromStdString(cfg.held_cart_expiry()),
                                payoutCategories,
                                QString::fromStdString(cfg.store_name()),
-                               QString::fromStdString(cfg.register_name()));
+                               QString::fromStdString(cfg.register_name()),
+                               QString::fromStdString(cfg.shift_management_mode()),
+                               cfg.require_auth_before_start(), cfg.require_auth_after_end(),
+                               cfg.require_auth_different_shift(), cfg.require_auth_reopen_completed(),
+                               shiftMasters);
             break;
         }
         case E::kPayoutRecorded:
@@ -417,15 +438,26 @@ void PosEngineBridge::runEod() {
     writeCommand(std::move(cmd));
 }
 
-void PosEngineBridge::openShift(const QString& cashierUserId, const QString& openingCashStr) {
+void PosEngineBridge::openShift(const QString& cashierUserId, const QString& openingCashStr,
+                                const QString& shiftMasterId, const QString& authReason,
+                                const QString& authorizedBy) {
     Command cmd;
     auto* os = cmd.mutable_open_shift();
     os->set_cashier_user_id(cashierUserId.toStdString());
     os->set_opening_cash_str(openingCashStr.toStdString());
+    if (!shiftMasterId.isEmpty()) os->set_shift_master_id(shiftMasterId.toStdString());
+    // Attestation only on a re-issue after AuthRequired(open_session_policy). Presence — not any
+    // PIN check on the wire — is what clears the engine's SCHEDULED policy gate (same-device trust).
+    if (!authReason.isEmpty() || !authorizedBy.isEmpty()) {
+        auto* sa = os->mutable_supervisor_auth();
+        sa->set_reason(authReason.toStdString());
+        sa->set_authorized_by(authorizedBy.toStdString());
+    }
     writeCommand(std::move(cmd));
 }
 
-void PosEngineBridge::closeShift(const QVariantList& denominations, const QString& closingCashStr) {
+void PosEngineBridge::closeShift(const QVariantList& denominations, const QString& closingCashStr,
+                                 const QString& authReason, const QString& authorizedBy) {
     Command cmd;
     auto* cs = cmd.mutable_close_shift();
     for (const auto& d : denominations) {
@@ -435,6 +467,13 @@ void PosEngineBridge::closeShift(const QVariantList& denominations, const QStrin
         denom->set_count(row.value(QStringLiteral("count")).toInt());
     }
     cs->set_closing_cash_str(closingCashStr.toStdString());
+    // Supervisor attestation on a re-issue after AuthRequired(close_shift_variance) — clears the
+    // engine's over-tolerance variance hold. Same mechanism as openShift.
+    if (!authReason.isEmpty() || !authorizedBy.isEmpty()) {
+        auto* sa = cs->mutable_supervisor_auth();
+        sa->set_reason(authReason.toStdString());
+        sa->set_authorized_by(authorizedBy.toStdString());
+    }
     writeCommand(std::move(cmd));
 }
 

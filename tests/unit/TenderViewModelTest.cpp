@@ -197,3 +197,19 @@ TEST(TenderViewModel, StateChangesWhenBalanceUpdates) {
     setBalance(bridge, "0.00");  // a fresh snapshot must re-drive canComplete
     EXPECT_GE(stateChanges, 1);
 }
+
+TEST(TenderViewModel, CommandRejectedSurfacesVerbatim) {
+    PosEngineBridge bridge;
+    TenderViewModel tvm;
+    tvm.setBridge(&bridge);
+
+    // A rejected settle — most visibly NO_OPEN_SHIFT when no register session is open — surfaces
+    // in the tender status line instead of Complete silently doing nothing.
+    emit bridge.commandRejected(QStringLiteral("NO_OPEN_SHIFT"),
+                                QStringLiteral("Open a shift before settling"));
+    EXPECT_EQ(tvm.statusMessage(), QStringLiteral("Open a shift before settling"));
+
+    // An empty message falls back to the code (mirrors PayoutViewModel/ReturnViewModel).
+    emit bridge.commandRejected(QStringLiteral("NO_OPEN_SHIFT"), QString());
+    EXPECT_EQ(tvm.statusMessage(), QStringLiteral("NO_OPEN_SHIFT"));
+}

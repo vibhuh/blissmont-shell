@@ -58,6 +58,28 @@ Item {
     function focusSearch() { screen.navState = "item" }  // re-entering home re-focuses search
     function openTasks() { actionBar.openTasks() }       // global-shortcut entry to the launcher
 
+    // SINGLE shift-management mode (register-session slice, contracts v1.10.0): there is no Begin/
+    // Close-Shift Tasks item (see TasksMenu) — the register opens implicitly. When no session is
+    // open, auto-present the Open-Register screen (the same full-screen Begin workflow, mode-framed)
+    // so the cashier captures the opening float before selling. The one-shot guard stops it from
+    // re-firing while the screen is up or after it's dismissed; it re-arms when a session opens.
+    // NOTE: this fires once ConfigService has loaded and the engine has reported a not-open state;
+    // if the engine emits no shift state on connect for a session-less terminal, it won't auto-fire
+    // — validate live (checkpoint) and, if so, add an engine emit-on-connect or a first-scan trigger.
+    property bool singleAutoPrompted: false
+    function maybeAutoOpenSingle() {
+        if (ConfigService.shiftManagementMode !== "single" || !ConfigService.loaded) return
+        if (screen.shiftStatus === "open") { screen.singleAutoPrompted = false; return }
+        if (screen.workflow !== "" || screen.singleAutoPrompted) return
+        screen.singleAutoPrompted = true
+        screen.workflow = "beginday"
+    }
+    Component.onCompleted: screen.maybeAutoOpenSingle()
+    Connections {
+        target: ConfigService
+        function onChanged() { screen.maybeAutoOpenSingle() }
+    }
+
     // Single action handler — backs the ActionBar buttons, the Tasks launcher items, and
     // Main.qml's global F-keys (one path, so button and key stay in lockstep).
     function doAction(name) {
@@ -130,7 +152,10 @@ Item {
                           .arg(openShiftIds.length))
         }
         // Project the engine's real shift state into the top bar (R1.5).
-        function onShiftStateChanged(shiftId, status) { screen.shiftStatus = status }
+        function onShiftStateChanged(shiftId, status) {
+            screen.shiftStatus = status
+            screen.maybeAutoOpenSingle()   // SINGLE: re-arm/close the auto Open-Register prompt
+        }
     }
 
     // The view-model for the scan/search home-state and transient status.

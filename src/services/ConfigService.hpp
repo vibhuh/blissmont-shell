@@ -62,6 +62,19 @@ class ConfigService : public QObject {
     // "light" | "dark"; Theme.qml binds its initial mode to this. A live toggle in the UI
     // detaches from this, so a manual switch is not overridden by a config rehydrate.
     Q_PROPERTY(QString themeMode READ themeMode NOTIFY changed)
+    // ── Shift management (contracts v1.10.0) ──────────────────────────────────────────────
+    // shiftManagementMode ("single"|"multiple"|"scheduled") selects which Begin-Register screen
+    // the shell shows and whether the Tasks menu carries Begin/Close-Shift items. The four
+    // require_auth_* bools are the uniform SCHEDULED-open supervisor-auth policy (the engine
+    // enforces them; the shell just re-issues with SupervisorAuth when AuthRequired fires).
+    // shiftMasters is the company's shift definitions (QVariantMap rows
+    // {id, code, name, startTime, endTime, sequence, isActive}), non-empty only in SCHEDULED mode.
+    Q_PROPERTY(QString shiftManagementMode READ shiftManagementMode NOTIFY changed)
+    Q_PROPERTY(bool requireAuthBeforeStart READ requireAuthBeforeStart NOTIFY changed)
+    Q_PROPERTY(bool requireAuthAfterEnd READ requireAuthAfterEnd NOTIFY changed)
+    Q_PROPERTY(bool requireAuthDifferentShift READ requireAuthDifferentShift NOTIFY changed)
+    Q_PROPERTY(bool requireAuthReopenCompleted READ requireAuthReopenCompleted NOTIFY changed)
+    Q_PROPERTY(QVariantList shiftMasters READ shiftMasters NOTIFY changed)
 
 public:
     explicit ConfigService(QObject* parent = nullptr);
@@ -83,6 +96,12 @@ public:
     [[nodiscard]] bool allowPartialReturn() const { return allowPartialReturn_; }
     [[nodiscard]] QString heldCartExpiry() const { return heldCartExpiry_; }
     [[nodiscard]] QString themeMode() const { return themeMode_; }
+    [[nodiscard]] QString shiftManagementMode() const { return shiftManagementMode_; }
+    [[nodiscard]] bool requireAuthBeforeStart() const { return requireAuthBeforeStart_; }
+    [[nodiscard]] bool requireAuthAfterEnd() const { return requireAuthAfterEnd_; }
+    [[nodiscard]] bool requireAuthDifferentShift() const { return requireAuthDifferentShift_; }
+    [[nodiscard]] bool requireAuthReopenCompleted() const { return requireAuthReopenCompleted_; }
+    [[nodiscard]] QVariantList shiftMasters() const { return shiftMasters_; }
 
 public slots:
     // Hydrate from an engine ConfigUpdated event (relayed by PosEngineBridge, wired
@@ -100,7 +119,12 @@ public slots:
                      const QString& heldCartExpiry = QString(),
                      const QStringList& payoutCategories = QStringList(),
                      const QString& storeName = QString(),
-                     const QString& registerName = QString());
+                     const QString& registerName = QString(),
+                     const QString& shiftManagementMode = QStringLiteral("multiple"),
+                     bool requireAuthBeforeStart = false, bool requireAuthAfterEnd = false,
+                     bool requireAuthDifferentShift = false,
+                     bool requireAuthReopenCompleted = false,
+                     const QVariantList& shiftMasters = QVariantList());
 
     // Appearance default (SHELL_KEYBOARD_LOOKUP brief, Part 2). Kept OFF the wired
     // ConfigUpdated arm (applyConfig stays arity-matched to the bridge signal — no contract
@@ -130,6 +154,14 @@ private:
     bool allowPartialReturn_ = false;
     QString heldCartExpiry_;  // duration string e.g. "24h"; empty → engine end-of-day default
     QString themeMode_ = QStringLiteral("light");  // configurable default appearance; POS = light
+    // Shift management — default "multiple" matches the engine's COALESCE default (today's
+    // unrestricted behaviour), so a pre-hydration shell shows the Multiple screen, not a blank one.
+    QString shiftManagementMode_ = QStringLiteral("multiple");
+    bool requireAuthBeforeStart_ = false;
+    bool requireAuthAfterEnd_ = false;
+    bool requireAuthDifferentShift_ = false;
+    bool requireAuthReopenCompleted_ = false;
+    QVariantList shiftMasters_;  // company shift definitions; non-empty only in SCHEDULED mode
 };
 
 }  // namespace blissmont::services
