@@ -24,6 +24,7 @@ void CartSummary::update(const blissmont::terminal::v1::CartUpdated& s) {
     itemCount_ = s.item_count();
     unitCount_ = QString::fromStdString(s.unit_count_str());
     nextReceiptNo_ = QString::fromStdString(s.next_receipt_no());
+    youSave_ = QString::fromStdString(s.you_save_str());
     emit changed();
 }
 

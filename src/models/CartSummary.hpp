@@ -34,6 +34,9 @@ class CartSummary : public QObject {
     // Receipt number the next settle will assign — the bill being rung (top-bar
     // identity, contracts v1.6.0). Empty until the engine projects it.
     Q_PROPERTY(QString nextReceiptNo READ nextReceiptNo NOTIFY changed)
+    // "You Save" (MRP − charged), projected from the same snapshot as the totals
+    // (contracts v1.11.0). "0.00"/empty when nothing saved — the panel zero-suppresses.
+    Q_PROPERTY(QString youSave READ youSave NOTIFY changed)
 
 public:
     explicit CartSummary(QObject* parent = nullptr);
@@ -56,6 +59,7 @@ public:
     [[nodiscard]] int itemCount() const { return itemCount_; }
     [[nodiscard]] QString unitCount() const { return unitCount_; }
     [[nodiscard]] QString nextReceiptNo() const { return nextReceiptNo_; }
+    [[nodiscard]] QString youSave() const { return youSave_; }
 
     void update(const blissmont::terminal::v1::CartUpdated& snapshot);
 
@@ -68,6 +72,7 @@ private:
     QString customerLabel_, status_;
     QString taxableValue_, cgst_, sgst_, igst_, roundOff_, unitCount_;
     QString nextReceiptNo_;
+    QString youSave_;
     bool taxInterstate_ = false;
     int itemCount_ = 0;
 };

@@ -84,51 +84,65 @@ Rectangle {
 
         Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.divider }
 
-        // ── Footer: the GRAND TOTAL — the screen's most prominent number (Tier 1.2). It is
-        //    enlarged and bold, gets the row's full width on the right so it never crowds the
-        //    label or clips, and sits in its own padded band so the big number has comfortable
-        //    baseline room (fixes any container collision). The label + item/unit counts stack
-        //    compactly on the left.
-        RowLayout {
+        // ── Footer: a 2×2 grid so labels sit on a clean baseline grid with their amounts.
+        //    Row 0 — "Total payable" (left) │ the GRAND TOTAL (right), the screen's most
+        //    prominent number (Tier 1.2), enlarged/bold, right-aligned and elide-safe.
+        //    Row 1 — the item/unit counts (left) │ "You Save" (right, green), which therefore
+        //    SHARES the sub-line beside the counts rather than adding a whole new row — so it
+        //    costs ~one glyph of height, never spills the fixed strip, and reads directly under
+        //    the total it saves against. "You Save" is zero-suppressed (hidden, no "₹0.00").
+        GridLayout {
             Layout.fillWidth: true
-            Layout.topMargin: Theme.unit
+            // No top margin — the ColumnLayout's own spacing already separates the footer
+            // from the divider; a second margin here made the gap above "Total payable"
+            // read as too airy versus the tighter rule above it.
             Layout.bottomMargin: Theme.unit
-            spacing: Theme.unit
-            ColumnLayout {
-                spacing: 0
-                // Center the label stack against the tall grand-total number so the two
-                // sit on a shared optical centre (R2.1 — no top-heavy collision).
-                Layout.alignment: Qt.AlignVCenter
-                Text {
-                    text: qsTr("Total payable")
-                    color: Theme.text
-                    font.family: Theme.fontFamily
-                    font.pixelSize: Theme.fontBody
-                    font.bold: true
-                }
-                Text {
-                    text: qsTr("%1 items · %2 units")
-                            .arg(totals.s.itemCount)
-                            .arg(Format.qty(totals.s.unitCount))
-                    color: Theme.textMuted
-                    font.family: Theme.fontFamily
-                    font.pixelSize: Theme.fontSmall
-                }
+            columns: 2
+            columnSpacing: Theme.gap
+            rowSpacing: 0
+
+            // Row 0 — label ←→ grand total. Both v-centred within the tall number's row so the
+            // label sits on the number's optical centre (R2.1 — no top-heavy collision).
+            Text {
+                Layout.alignment: Qt.AlignLeft | Qt.AlignVCenter
+                text: qsTr("Total payable")
+                color: Theme.text
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.fontBody
+                font.bold: true
             }
             Text {
                 Layout.fillWidth: true
-                Layout.alignment: Qt.AlignVCenter
-                // A little breathing room above/below the big number so its ascenders and
-                // descenders never crowd the divider or the panel's bottom edge (R2.1).
-                topPadding: Theme.unit
-                bottomPadding: Theme.unit
+                Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
                 text: Format.money(totals.s.total)
                 color: Theme.text
                 font.family: Theme.monoFamily
                 font.pixelSize: Theme.fontGrand
                 font.weight: Font.Bold
                 horizontalAlignment: Text.AlignRight
-                verticalAlignment: Text.AlignVCenter
+                elide: Text.ElideLeft
+            }
+
+            // Row 1 — counts ←→ You Save.
+            Text {
+                Layout.alignment: Qt.AlignLeft | Qt.AlignVCenter
+                text: qsTr("%1 items · %2 units")
+                        .arg(totals.s.itemCount)
+                        .arg(Format.qty(totals.s.unitCount))
+                color: Theme.textMuted
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.fontSmall
+            }
+            Text {
+                Layout.fillWidth: true
+                Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
+                visible: parseFloat(totals.s.youSave) > 0
+                text: qsTr("You Save %1").arg(Format.money(totals.s.youSave))
+                color: Theme.ok
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.fontMedium
+                font.bold: true
+                horizontalAlignment: Text.AlignRight
                 elide: Text.ElideLeft
             }
         }
