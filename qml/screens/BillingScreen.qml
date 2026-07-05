@@ -13,6 +13,9 @@ import Blissmont.Shell
 Item {
     id: screen
     property string navState: "item"
+    // The totals strip grows when "You Save" is present so the extra footer sub-line fits
+    // (see the Customer | Totals RowLayout below).
+    readonly property bool totalsHasSaving: parseFloat(PosEngineBridge.summary.youSave) > 0
     // Full-screen cash-control workflow layer (UX §12) — "" = the sale screen owns the view;
     // "eod" = End-of-Day day close. Distinct from navState (the right-panel takeover): these
     // are full-screen, never modals or panels. Begin-Day / shift-close join this layer later.
@@ -215,10 +218,15 @@ Item {
                 // which makes the RowLayout inherit a fillHeight stretch that would
                 // otherwise override preferredHeight and starve the BillTable above to
                 // 0px. The cap keeps it a fixed bottom strip so BillTable fills the rest.
+                // The strip ADAPTS: 164 normally, taller when "You Save" is showing so the
+                // extra footer sub-line (counts · You Save) fits inside the totals panel
+                // instead of spilling past its bottom border. Grows once when the first
+                // MRP-bearing item is scanned; shrinks back on an empty/no-saving cart — so
+                // no cart-grid space is wasted when there is nothing to save.
                 RowLayout {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 164
-                    Layout.maximumHeight: 164
+                    Layout.preferredHeight: screen.totalsHasSaving ? 192 : 160
+                    Layout.maximumHeight: screen.totalsHasSaving ? 192 : 160
                     spacing: Theme.gap
                     CustomerBlock {
                         Layout.fillWidth: true
