@@ -16,7 +16,8 @@ PosEngineBridge::PosEngineBridge(QObject* parent)
       returnLines_(new blissmont::models::ReturnLineModel(this)),
       history_(new blissmont::models::HistoryListModel(this)),
       billDetail_(new blissmont::models::BillDetailModel(this)),
-      heldCarts_(new blissmont::models::HeldCartModel(this)) {}
+      heldCarts_(new blissmont::models::HeldCartModel(this)),
+      operators_(new blissmont::models::OperatorModel(this)) {}
 
 PosEngineBridge::~PosEngineBridge() { disconnectFromEngine(); }
 
@@ -267,6 +268,33 @@ void PosEngineBridge::applyEvent(const Event& evt) {
             heldCarts_->reset(evt.held_carts_list());
             emit heldCartsListed();
             break;
+        case E::kOperatorsList:
+            // Full-snapshot reset of the Begin-Day operator picker (mirrors kHeldCartsList).
+            operators_->reset(evt.operators_list());
+            emit operatorsListed();
+            break;
+        case E::kProductList: {
+            // Full-snapshot rebuild of the search catalogue as QVariantMap rows the
+            // LookupController ranks (keys match ProductSearchPanel's searchKeys + display).
+            QVariantList rows;
+            rows.reserve(evt.product_list().products_size());
+            for (const auto& p : evt.product_list().products()) {
+                const double taxRate = QString::fromStdString(p.tax_rate_str()).toDouble();
+                QVariantMap row;
+                row["id"] = QString::fromStdString(p.item_id());
+                row["name"] = QString::fromStdString(p.name());
+                row["sku"] = QString::fromStdString(p.sku());
+                row["barcode"] = QString::fromStdString(p.barcode());
+                row["price"] = QString::fromStdString(p.unit_price_str());
+                row["hsn"] = QString::fromStdString(p.hsn());
+                row["gst"] = QString::number(taxRate * 100.0, 'g', 4); // "18"
+                row["category"] = QStringLiteral("All"); // no category on the device cache (yet)
+                rows.push_back(row);
+            }
+            products_ = std::move(rows);
+            emit productsListed();
+            break;
+        }
         default:
             break;  // events filled in as panels land
     }
@@ -440,12 +468,16 @@ void PosEngineBridge::runEod() {
 
 void PosEngineBridge::openShift(const QString& cashierUserId, const QString& openingCashStr,
                                 const QString& shiftMasterId, const QString& authReason,
-                                const QString& authorizedBy) {
+                                const QString& authorizedBy, const QString& operatorPin) {
     Command cmd;
     auto* os = cmd.mutable_open_shift();
     os->set_cashier_user_id(cashierUserId.toStdString());
     os->set_opening_cash_str(openingCashStr.toStdString());
     if (!shiftMasterId.isEmpty()) os->set_shift_master_id(shiftMasterId.toStdString());
+    // The Begin-Day PIN — the engine bcrypt-verifies it against the local operator cache
+    // (offline) and rejects a wrong/unknown/disabled operator before opening. Empty when the
+    // device has no synced operators yet (engine accepts the id as-is). Never logged here.
+    if (!operatorPin.isEmpty()) os->set_operator_pin(operatorPin.toStdString());
     // Attestation only on a re-issue after AuthRequired(open_session_policy). Presence — not any
     // PIN check on the wire — is what clears the engine's SCHEDULED policy gate (same-device trust).
     if (!authReason.isEmpty() || !authorizedBy.isEmpty()) {
@@ -492,6 +524,18 @@ void PosEngineBridge::resumeCart(const QString& heldCartId) {
 void PosEngineBridge::listHeldCarts() {
     Command cmd;
     cmd.mutable_list_held_carts();
+    writeCommand(std::move(cmd));
+}
+
+void PosEngineBridge::listOperators() {
+    Command cmd;
+    cmd.mutable_list_operators();
+    writeCommand(std::move(cmd));
+}
+
+void PosEngineBridge::listProducts() {
+    Command cmd;
+    cmd.mutable_list_products();
     writeCommand(std::move(cmd));
 }
 

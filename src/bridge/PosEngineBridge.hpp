@@ -29,6 +29,7 @@
 #include "models/HistoryListModel.hpp"
 #include "models/BillDetailModel.hpp"
 #include "models/HeldCartModel.hpp"
+#include "models/OperatorModel.hpp"
 
 namespace blissmont::bridge {
 
@@ -44,6 +45,11 @@ class PosEngineBridge : public QObject {
     Q_PROPERTY(blissmont::models::HistoryListModel* history READ history CONSTANT)
     Q_PROPERTY(blissmont::models::BillDetailModel* billDetail READ billDetail CONSTANT)
     Q_PROPERTY(blissmont::models::HeldCartModel* heldCarts READ heldCarts CONSTANT)
+    Q_PROPERTY(blissmont::models::OperatorModel* operators READ operators CONSTANT)
+    // The device's product catalogue for the search panel (client-side ranked lookup via
+    // LookupController). A QVariantList of QVariantMap rows {id,name,sku,barcode,price,hsn,gst,
+    // category}; refreshed on each ProductList reply. Empty until listProducts() is answered.
+    Q_PROPERTY(QVariantList products READ products NOTIFY productsListed)
     Q_PROPERTY(bool connected READ connected NOTIFY connectionChanged)
 
 public:
@@ -57,6 +63,8 @@ public:
     [[nodiscard]] blissmont::models::HistoryListModel* history() const { return history_; }
     [[nodiscard]] blissmont::models::BillDetailModel* billDetail() const { return billDetail_; }
     [[nodiscard]] blissmont::models::HeldCartModel* heldCarts() const { return heldCarts_; }
+    [[nodiscard]] blissmont::models::OperatorModel* operators() const { return operators_; }
+    [[nodiscard]] QVariantList products() const { return products_; }
     [[nodiscard]] bool connected() const { return connected_.load(std::memory_order_relaxed); }
 
     // ── UI -> engine (one per Command oneof; thin: build + write) ─────────────
@@ -108,10 +116,16 @@ public:
     // the shell verifies the supervisor device-side (attestation-only for now — no device credential
     // store yet), and the engine trusts the same-device SupervisorAuth and skips the policy gate. Both
     // empty on the first (ungated) attempt.
+    // operatorPin (Slice B): the cashier's Begin-Day PIN. The engine bcrypt-verifies it against
+    // the locally-synced operator cache (offline) and rejects a wrong/unknown/disabled operator
+    // with commandRejected BEFORE opening — so cashierUserId (a real users.id from the picker)
+    // only reaches the backend's opened_by after a real operator authenticated. Empty when the
+    // device has no synced operators yet (the engine then accepts the id as-is).
     Q_INVOKABLE void openShift(const QString& cashierUserId, const QString& openingCashStr,
                                const QString& shiftMasterId = QString(),
                                const QString& authReason = QString(),
-                               const QString& authorizedBy = QString());
+                               const QString& authorizedBy = QString(),
+                               const QString& operatorPin = QString());
     // Shift close (UX §12, blind denomination count). denominations is a list of {unit, count}
     // maps (rupee note/coin value → count keyed). The engine sums them (Σ unit×count) as the
     // counted cash, reconciles it against EXPECTED cash (opening + cash sales + cash-in −
@@ -131,6 +145,14 @@ public:
     Q_INVOKABLE void holdCart(const QString& label);
     Q_INVOKABLE void resumeCart(const QString& heldCartId);
     Q_INVOKABLE void listHeldCarts();
+    // Operator login (Slice B) — fills the operators model with the device's enabled cashiers
+    // (engine replies OperatorsList → operatorsListed). Reads the local operator cache; works
+    // fully offline. The shell requests this when the Begin-Day screen opens.
+    Q_INVOKABLE void listOperators();
+    // Catalog search — fills the products list with the device's catalogue (engine replies
+    // ProductList → productsListed). Reads the local product cache; works fully offline. The
+    // shell requests this when the product-search panel opens.
+    Q_INVOKABLE void listProducts();
 
 signals:
     void connectionChanged();
@@ -223,6 +245,12 @@ signals:
     // A fresh active-holds set has landed in the heldCarts model (full snapshot). The row
     // payload IS the model — this is the "holds changed" notify (mirrors historyResults).
     void heldCartsListed();
+    // A fresh operator set has landed in the operators model (full snapshot). The row payload
+    // IS the model — this is the "operators changed" notify for the Begin-Day picker.
+    void operatorsListed();
+    // A fresh product catalogue has landed in the products list (full snapshot). The search
+    // panel re-feeds its LookupController from products on this notify.
+    void productsListed();
 
 private:
     using Command = blissmont::terminal::v1::Command;
@@ -241,6 +269,8 @@ private:
     blissmont::models::HistoryListModel* history_;
     blissmont::models::BillDetailModel* billDetail_;
     blissmont::models::HeldCartModel* heldCarts_;
+    blissmont::models::OperatorModel* operators_;
+    QVariantList products_;
 
     std::shared_ptr<grpc::Channel> channel_;
     std::unique_ptr<blissmont::terminal::v1::TerminalEngine::Stub> stub_;
