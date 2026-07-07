@@ -17,6 +17,7 @@
 #include <QVariantList>
 
 #include <atomic>
+#include <deque>
 #include <memory>
 
 #include <grpcpp/grpcpp.h>
@@ -279,6 +280,13 @@ private:
 
     std::unique_ptr<QThread> readerThread_;
     QMutex writeMutex_;
+    // Commands issued before the Session stream exists (e.g. a panel requesting the
+    // catalog in Component.onCompleted, which runs before Main.qml's connectToEngine)
+    // are queued here and flushed on connect instead of being silently dropped.
+    // Bounded — the oldest is dropped past the cap so a stream that never comes up
+    // can't grow this without limit. Guarded by writeMutex_.
+    static constexpr int kMaxPendingWrites = 64;
+    std::deque<Command> pendingWrites_;
     std::atomic<bool> connected_{false};
     std::atomic<bool> stopping_{false};
 };

@@ -1,6 +1,7 @@
 // bridge/PosEngineBridge.cpp — see PosEngineBridge.hpp.
 #include "bridge/PosEngineBridge.hpp"
 
+#include <QDebug>
 #include <QMetaObject>
 #include <QVariantMap>
 
@@ -37,6 +38,16 @@ void PosEngineBridge::connectToEngine(const QString& target) {
     stub_ = blissmont::terminal::v1::TerminalEngine::NewStub(channel_);
     ctx_ = std::make_unique<grpc::ClientContext>();
     stream_ = stub_->Session(ctx_.get());
+
+    // Flush any commands queued before the stream existed (startup-order trap: a
+    // panel may issue a request in Component.onCompleted, which runs before this).
+    {
+        QMutexLocker lock(&writeMutex_);
+        while (!pendingWrites_.empty()) {
+            stream_->Write(pendingWrites_.front());
+            pendingWrites_.pop_front();
+        }
+    }
 
     // One dedicated reader thread (gRPC sync API: exactly one reader, one writer).
     readerThread_.reset(QThread::create([this] { readLoop(); }));
@@ -77,8 +88,21 @@ void PosEngineBridge::readLoop() {
 }
 
 void PosEngineBridge::writeCommand(Command cmd) {
-    if (!stream_) return;
     QMutexLocker lock(&writeMutex_);
+    if (!stream_) {
+        // No stream yet: queue and flush on connect (see connectToEngine) instead of
+        // silently dropping. Fixes the startup-order trap — a request issued in a
+        // panel's Component.onCompleted runs before Main.qml's connectToEngine, so the
+        // stream doesn't exist yet. Bounded: drop the oldest past the cap so a stream
+        // that never comes up can't grow this without limit.
+        if (pendingWrites_.size() >= static_cast<std::size_t>(kMaxPendingWrites)) {
+            pendingWrites_.pop_front();
+            qWarning("PosEngineBridge: pre-connect write queue full (%d); dropped oldest command",
+                     kMaxPendingWrites);
+        }
+        pendingWrites_.push_back(std::move(cmd));
+        return;
+    }
     stream_->Write(cmd);
 }
 
