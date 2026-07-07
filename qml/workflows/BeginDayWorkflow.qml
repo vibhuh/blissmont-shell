@@ -22,15 +22,27 @@ Item {
     id: root
     signal closed()
 
-    // Device-default cashier until the shell has a login (see PosEngineBridge::openShift).
-    readonly property string cashierId: "cashier-1"
     readonly property string mode: ConfigService.shiftManagementMode  // single | multiple | scheduled
 
-    // entry → opening → done | error | auth
-    property string phase: "entry"
+    // operator → entry → opening → done | error | auth
+    // The operator phase (Slice B) picks the cashier + PIN before the opening-cash entry.
+    property string phase: "operator"
     property string errorMessage: ""
     property string openedFloat: ""
     property string authReason: ""
+
+    // Operator (cashier) login. There is NO device-default fallback: a device with no synced
+    // operators is "not commissioned" and cannot open a shift (the engine refuses too). The
+    // selected operator's real users.id becomes OpenShift.cashier_user_id (→ opened_by); the PIN
+    // is verified by the engine against its local bcrypt cache (offline). Retained across an
+    // auth re-issue so the same operator + PIN resend.
+    property bool   commissioned: PosEngineBridge.operators.count > 0
+    property int    selectedOperatorIndex: -1
+    property string selectedOperatorId: ""
+    property string selectedOperatorName: ""
+    property string operatorPin: ""
+
+    readonly property bool operatorReady: root.selectedOperatorId !== "" && pinPad.complete
 
     // Scheduled-mode selection. selectedShiftId is passed as OpenShift.shift_master_id (empty in
     // single/multiple). Retained across an auth re-issue so the same shift + float resend.
@@ -49,11 +61,18 @@ Item {
             var idx = root.suggestIndex()
             if (idx >= 0) root.selectShift(idx)
         }
-        floatField.forceActiveFocus()
+        // Pull the device's enabled cashiers for the picker (engine replies OperatorsList →
+        // onOperatorsListed decides operator-vs-legacy). Works offline from the local cache.
+        PosEngineBridge.listOperators()
+        pinPad.forceActiveFocus()
     }
-    // Leaving entry disables the float field; pull focus back to the root so Enter/Esc keep driving
-    // the primary/cancel — EXCEPT in auth, where the supervisor dialog owns focus.
-    onPhaseChanged: if (root.phase !== "entry" && root.phase !== "auth") root.forceActiveFocus()
+    // Focus follows the phase: the PIN pad in operator, the float field in entry, else the root
+    // (so Enter/Esc keep driving primary/cancel) — EXCEPT auth, where the supervisor dialog owns it.
+    onPhaseChanged: {
+        if (root.phase === "operator") pinPad.forceActiveFocus()
+        else if (root.phase === "entry") floatField.forceActiveFocus()
+        else if (root.phase !== "auth") root.forceActiveFocus()
+    }
 
     Timer {
         interval: 15000; repeat: true
@@ -92,6 +111,32 @@ Item {
         root.selectedShiftName = root.shifts[i].name
     }
 
+    // ── Operator selection (Slice B) ────────────────────────────────────────────────
+    // Wipe the entered PIN from both the pad and the retained property. Called on a
+    // successful open, on cancel, and on any close — the PIN is transient credential
+    // material and must not linger in cleartext once it has served the open.
+    function clearPin() {
+        pinPad.clearAll()
+        root.operatorPin = ""
+    }
+    onClosed: root.clearPin()
+
+    function selectOperator(i, userId, name) {
+        root.selectedOperatorIndex = i
+        root.selectedOperatorId = userId
+        root.selectedOperatorName = name
+        root.errorMessage = ""
+        pinPad.forceActiveFocus()   // keep typing digits after picking a cashier
+    }
+    // Advance operator → entry once a cashier is picked and the PIN is long enough. A device with
+    // no synced operators (not commissioned) cannot advance — it has no cashier to authenticate.
+    function advanceFromOperator() {
+        if (!root.commissioned || !root.operatorReady) return
+        root.operatorPin = pinPad.pin
+        root.errorMessage = ""
+        root.phase = "entry"
+    }
+
     // ── Dispatch ──────────────────────────────────────────────────────────────────
     function submit() {
         var v = floatField.text.trim()
@@ -99,20 +144,24 @@ Item {
         root.openedFloat = v
         root.phase = "opening"
         // shiftMasterId is empty in single/multiple; the engine only classifies it in scheduled.
-        PosEngineBridge.openShift(root.cashierId, v, root.selectedShiftId)
+        // The engine verifies operatorPin against its local operator cache and rejects a bad PIN
+        // before opening — so cashier_user_id reaches opened_by only after a real login.
+        PosEngineBridge.openShift(root.selectedOperatorId, v, root.selectedShiftId, "", "", root.operatorPin)
     }
-    // Re-issue after AuthRequired(open_session_policy): same shift + float, plus the attestation.
+    // Re-issue after AuthRequired(open_session_policy): same operator + shift + float, plus the
+    // supervisor attestation (and the same operator PIN so the engine re-verifies the login).
     function reissueWithAuth(reason, authorizedBy) {
         root.phase = "opening"
-        PosEngineBridge.openShift(root.cashierId, root.openedFloat, root.selectedShiftId,
-                                  reason, authorizedBy)
+        PosEngineBridge.openShift(root.selectedOperatorId, root.openedFloat, root.selectedShiftId,
+                                  reason, authorizedBy, root.operatorPin)
     }
     function primary() {
         switch (root.phase) {
-        case "entry":   root.submit(); break
-        case "opening": break                 // waiting on the engine
-        case "auth":    break                 // the supervisor dialog owns its actions
-        default:        root.closed()         // done / error → leave
+        case "operator": root.advanceFromOperator(); break
+        case "entry":    root.submit(); break
+        case "opening":  break                // waiting on the engine
+        case "auth":     break                // the supervisor dialog owns its actions
+        default:         root.closed()        // done / error → leave
         }
     }
 
@@ -126,10 +175,22 @@ Item {
     Connections {
         target: PosEngineBridge
         function onShiftStateChanged(shiftId, status) {
-            if (root.phase === "opening" && status === "open") root.phase = "done"
+            if (root.phase === "opening" && status === "open") {
+                root.clearPin()   // login succeeded — wipe the PIN now, not at Start Selling
+                root.phase = "done"
+            }
         }
         function onCommandRejected(code, message) {
             if (root.phase !== "opening") return
+            // A failed operator login (unknown/disabled operator or wrong PIN — the engine
+            // returns ONE opaque code so the cases can't be told apart) returns to the picker
+            // to retry, not a dead end.
+            if (code === "OPERATOR_AUTH_FAILED") {
+                root.errorMessage = message !== "" ? message : qsTr("Incorrect operator or PIN")
+                pinPad.clearAll()
+                root.phase = "operator"
+                return
+            }
             root.errorMessage = message !== "" ? message : qsTr("Could not open the register")
             root.phase = "error"
         }
@@ -167,6 +228,80 @@ Item {
         }
 
         Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
+
+        // ── Operator login (Slice B): pick the cashier + enter the PIN ──────────────
+        Rectangle {
+            visible: root.phase === "operator"
+            Layout.fillWidth: true
+            implicitHeight: opCol.implicitHeight + 2 * Theme.pad
+            radius: Theme.radius; color: Theme.surface; border.color: Theme.border; border.width: 1
+            ColumnLayout {
+                id: opCol
+                anchors.fill: parent; anchors.margins: Theme.pad; spacing: Theme.gap
+
+                Text {
+                    text: qsTr("Cashier")
+                    color: Theme.textMuted; font.family: Theme.fontFamily; font.pixelSize: Theme.fontSmall
+                }
+                // Not commissioned — no operators have synced to this device. The engine also
+                // refuses to open a shift in this state; there is no device-default fallback.
+                ColumnLayout {
+                    visible: !root.commissioned
+                    Layout.fillWidth: true; spacing: 2
+                    Text {
+                        Layout.fillWidth: true; wrapMode: Text.WordWrap
+                        text: qsTr("Terminal not commissioned")
+                        color: Theme.danger; font.family: Theme.fontFamily; font.pixelSize: Theme.fontLarge; font.bold: true
+                    }
+                    Text {
+                        Layout.fillWidth: true; wrapMode: Text.WordWrap
+                        text: qsTr("No cashiers have synced to this device yet. Provision a cashier and sync to open a register.")
+                        color: Theme.textMuted; font.family: Theme.fontFamily; font.pixelSize: Theme.fontBody
+                    }
+                }
+                ColumnLayout {
+                    visible: root.commissioned
+                    Layout.fillWidth: true; spacing: 2
+                    Repeater {
+                        model: PosEngineBridge.operators
+                        delegate: ListRow {
+                            required property int index
+                            required property string userId
+                            required property string displayName
+                            required property string posRole
+                            Layout.fillWidth: true
+                            title: displayName
+                            subtitle: posRole
+                            selected: index === root.selectedOperatorIndex
+                            onClicked: root.selectOperator(index, userId, displayName)
+                        }
+                    }
+                }
+
+                Rectangle { visible: root.commissioned; Layout.fillWidth: true; height: 1; color: Theme.divider }
+
+                Text {
+                    visible: root.commissioned
+                    text: root.selectedOperatorName !== ""
+                        ? qsTr("Enter PIN · %1").arg(root.selectedOperatorName)
+                        : qsTr("Select a cashier, then enter the PIN")
+                    color: Theme.textMuted; font.family: Theme.fontFamily; font.pixelSize: Theme.fontSmall
+                }
+                PinPad {
+                    id: pinPad
+                    visible: root.commissioned
+                    Layout.alignment: Qt.AlignHCenter
+                    onSubmitted: root.advanceFromOperator()
+                }
+                Text {
+                    visible: root.errorMessage !== "" && root.phase === "operator"
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    text: root.errorMessage
+                    color: Theme.danger; font.family: Theme.fontFamily; font.pixelSize: Theme.fontBody
+                }
+            }
+        }
 
         // ── Scheduled: shift picker (suggested pre-selected; cashier may override) ──
         Rectangle {
@@ -295,7 +430,7 @@ Item {
 
             Button {
                 id: cancelBtn
-                visible: root.phase === "entry" && root.cancellable
+                visible: (root.phase === "entry" || root.phase === "operator") && root.cancellable
                 Layout.preferredWidth: 160
                 text: qsTr("Cancel  (Esc)")
                 onClicked: root.closed()
@@ -315,8 +450,13 @@ Item {
             Button {
                 id: primaryBtn
                 Layout.preferredWidth: 240
-                enabled: root.phase !== "opening"
-                text: root.phase === "opening" ? qsTr("Opening…")
+                // In operator phase, gate on a commissioned device + a picked cashier + a
+                // long-enough PIN; otherwise the only disabled state is while the engine is opening.
+                enabled: root.phase === "operator"
+                    ? (root.commissioned && root.operatorReady)
+                    : root.phase !== "opening"
+                text: root.phase === "operator" ? qsTr("Continue  (Enter)")
+                    : root.phase === "opening" ? qsTr("Opening…")
                     : root.phase === "done" ? qsTr("Start Selling  (Enter)")
                     : root.phase === "error" ? qsTr("OK  (Enter)")
                     : root.mode === "single" ? qsTr("Open Register  (Enter)")
@@ -332,13 +472,16 @@ Item {
                     horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
                 }
                 background: Rectangle {
+                    id: primaryBg
                     implicitHeight: Theme.actionButton
                     radius: Theme.radius
                     color: !primaryBtn.enabled ? Theme.surface
                          : root.phase === "error" ? Theme.danger
                          : root.phase === "done" ? Theme.ok
                          : Theme.accent
-                    border.color: background.color
+                    // Self-reference the Rectangle's own id (not the Button's `background` alias,
+                    // which is undefined mid-construction → the Unit-5 #5 null-color crash).
+                    border.color: primaryBg.color
                 }
             }
         }

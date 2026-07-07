@@ -18,11 +18,12 @@ import Blissmont.Shell
 // controller + one key-router. To add a lookup elsewhere, instantiate the same two and lay out
 // to taste.
 //
-// DEFERRED DATA: there is no product-search/catalog contract on the engine yet (the engine
-// serves a fake catalog with no path to seeded data). So the chips/quick-keys bind to a small
-// in-shell DEMO catalog below, and the lookup ranks it client-side. When a catalog/search
-// contract lands, feed the engine-backed rows into the SAME controller — the field, scope
-// toggle, chips, both quick-key views, and all keyboard behavior stay as-is.
+// ENGINE-BACKED CATALOG: the catalogue is the device's real synced product cache, pulled via
+// PosEngineBridge.listProducts() (engine replies ProductList → productsListed) and ranked
+// client-side by the SAME controller. Works fully offline. A row PICK dispatches
+// AddLine(item_id) exactly as before; the field, scope toggle, chips, quick-key views, and all
+// keyboard behaviour are unchanged — only the data source moved from an in-shell demo array to
+// the engine.
 Item {
     id: panel
     property var vm: null                       // BillingViewModel (for the live scan path)
@@ -31,29 +32,25 @@ Item {
     property string activeCategory: "All"
 
     function focusSearch() { searchField.forceActiveFocus() }
-    Component.onCompleted: { lookup.setItems(panel.itemsForCategory); searchField.forceActiveFocus() }  // scan-is-home
+    Component.onCompleted: {
+        PosEngineBridge.listProducts()               // pull the device's real catalogue
+        lookup.setItems(panel.itemsForCategory)
+        searchField.forceActiveFocus()               // scan-is-home
+    }
 
-    // ── In-shell DEMO catalog (placeholder for the deferred engine catalog) ──────
-    // ALIGNED to the dev engine's seeded products (rachis-core cmd/blissmont-engine
-    // demoProducts) so a row PICK dispatches addLine() with an item id the engine can
-    // resolve (it looks up AddLine by item_id) — i.e. clicking a row actually lands a
-    // line in the cart against the dev engine. The `id` here MUST equal the engine's
-    // ItemId. When a real catalog/search contract lands, this whole list is replaced by
-    // the engine-backed model (see header note) and the alignment becomes moot.
-    // `icon` (Icon.qml glyph name) and/or `image` (source URL/path) are OPTIONAL tile art
-    // for grid mode (R2.4); the engine-backed catalog will populate them later. Items with
-    // neither fall back to a name monogram. Widget/Gadget carry a glyph; the test item is
-    // left bare on purpose to exercise the monogram fallback.
-    readonly property var catalog: [
-        { id: "ITEM-A",    name: "Widget",          sku: "SKU-A",   barcode: "111",     price: "100.00", category: "Hardware", hsn: "—", gst: "18", icon: "box" },
-        { id: "ITEM-B",    name: "Gadget",          sku: "SKU-B",   barcode: "222",     price: "250.00", category: "Hardware", hsn: "—", gst: "18", icon: "box" },
-        { id: "ITEM-TEST", name: "Smoke Test Item", sku: "TESTSKU", barcode: "TESTSKU", price: "100.00", category: "Test",     hsn: "—", gst: "18" }
-    ]
+    // ── Engine-backed catalog ────────────────────────────────────────────────────
+    // The device's synced product cache (PosEngineBridge.products, a QVariantList of
+    // {id,name,sku,barcode,price,hsn,gst,category}). Bound to the NOTIFY property so a fresh
+    // ProductList reply re-drives the reactive chain below (categories → itemsForCategory →
+    // lookup.setItems). A row PICK sends AddLine(id) — the engine resolves the line.
+    readonly property var catalog: PosEngineBridge.products
 
     readonly property var categories: {
         var seen = {}, out = ["All"]
-        for (var i = 0; i < catalog.length; ++i)
-            if (!seen[catalog[i].category]) { seen[catalog[i].category] = true; out.push(catalog[i].category) }
+        for (var i = 0; i < catalog.length; ++i) {
+            var c = catalog[i].category
+            if (c && c !== "All" && !seen[c]) { seen[c] = true; out.push(c) }
+        }
         return out
     }
 
