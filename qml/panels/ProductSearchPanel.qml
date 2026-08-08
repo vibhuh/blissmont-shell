@@ -238,6 +238,8 @@ Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
+            // A long result set must scroll — a themed, always-on-overflow handle.
+            ScrollBar.vertical: ThinScrollBar {}
             model: lookup                              // the ranked + filtered controller
             currentIndex: lookup.currentIndex          // highlight is list-state, bound to the controller
             spacing: 1
@@ -272,6 +274,8 @@ Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
+            // A long tile set must scroll — a themed, always-on-overflow handle.
+            ScrollBar.vertical: ThinScrollBar {}
             model: lookup
             // Roomier tile than the bare 64px min so art + name + price breathe, still well
             // above the ≥64px touch-target minimum. Square-ish, packed to fill the width.

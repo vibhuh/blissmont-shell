@@ -85,6 +85,7 @@ set(SHELL_QML_FILES
   components/PinPad.qml
   components/ScanField.qml
   components/BillTable.qml
+  components/ThinScrollBar.qml
   components/StatusLine.qml
   components/TopBar.qml
   components/ActionBar.qml
@@ -132,6 +133,7 @@ qt_add_qml_module(shell
     ${CMAKE_SOURCE_DIR}/qml/components/PinPad.qml
     ${CMAKE_SOURCE_DIR}/qml/components/ScanField.qml
     ${CMAKE_SOURCE_DIR}/qml/components/BillTable.qml
+    ${CMAKE_SOURCE_DIR}/qml/components/ThinScrollBar.qml
     ${CMAKE_SOURCE_DIR}/qml/components/StatusLine.qml
     ${CMAKE_SOURCE_DIR}/qml/components/TopBar.qml
     ${CMAKE_SOURCE_DIR}/qml/components/ActionBar.qml

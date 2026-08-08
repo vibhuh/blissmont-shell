@@ -234,6 +234,7 @@ Item {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 clip: true
+                ScrollBar.vertical: ThinScrollBar {}
                 model: PosEngineBridge.tenders
                 spacing: Theme.unit
                 delegate: RowLayout {

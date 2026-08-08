@@ -67,6 +67,7 @@ Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
+            ScrollBar.vertical: ThinScrollBar {}
             focus: true                 // takes focus → scan-field PLU parsing suspended (UX §3)
             model: PosEngineBridge.heldCarts
             spacing: Theme.unit

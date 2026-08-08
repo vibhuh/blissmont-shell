@@ -93,6 +93,7 @@ Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
+            ScrollBar.vertical: ThinScrollBar {}
             visible: !hvm.detailActive
             focus: !hvm.detailActive
             model: PosEngineBridge.history
@@ -159,6 +160,7 @@ Item {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 clip: true
+                ScrollBar.vertical: ThinScrollBar {}
                 model: PosEngineBridge.billDetail.lines
                 spacing: 2
                 delegate: RowLayout {

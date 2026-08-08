@@ -96,6 +96,8 @@ Rectangle {
             clip: true
             boundsBehavior: Flickable.StopAtBounds
             currentIndex: -1
+            // Long carts must scroll — a themed, always-on-overflow handle.
+            ScrollBar.vertical: ThinScrollBar {}
 
             delegate: Column {
                 id: row

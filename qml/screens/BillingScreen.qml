@@ -13,9 +13,6 @@ import Blissmont.Shell
 Item {
     id: screen
     property string navState: "item"
-    // The totals strip grows when "You Save" is present so the extra footer sub-line fits
-    // (see the Customer | Totals RowLayout below).
-    readonly property bool totalsHasSaving: parseFloat(PosEngineBridge.summary.youSave) > 0
     // Full-screen cash-control workflow layer (UX §12) — "" = the sale screen owns the view;
     // "eod" = End-of-Day day close. Distinct from navState (the right-panel takeover): these
     // are full-screen, never modals or panels. Begin-Day / shift-close join this layer later.
@@ -218,15 +215,17 @@ Item {
                 // which makes the RowLayout inherit a fillHeight stretch that would
                 // otherwise override preferredHeight and starve the BillTable above to
                 // 0px. The cap keeps it a fixed bottom strip so BillTable fills the rest.
-                // The strip ADAPTS: 164 normally, taller when "You Save" is showing so the
-                // extra footer sub-line (counts · You Save) fits inside the totals panel
-                // instead of spilling past its bottom border. Grows once when the first
-                // MRP-bearing item is scanned; shrinks back on an empty/no-saving cart — so
-                // no cart-grid space is wasted when there is nothing to save.
+                // The height is FIXED (not tied to "You Save"): TotalsBlock's content —
+                // the two figure columns, the divider, and the footer whose top row carries
+                // the 42px grand total — needs this much room in EVERY state, and TotalsBlock
+                // has no clip, so a shorter strip lets the footer sub-line (counts · You Save)
+                // spill past the panel's bottom border. "You Save" shares the counts row
+                // (it's the right column of that sub-line), so it adds no height and must NOT
+                // drive the cap — an empty/no-saving cart needs exactly the same 192px.
                 RowLayout {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: screen.totalsHasSaving ? 192 : 160
-                    Layout.maximumHeight: screen.totalsHasSaving ? 192 : 160
+                    Layout.preferredHeight: 192
+                    Layout.maximumHeight: 192
                     spacing: Theme.gap
                     CustomerBlock {
                         Layout.fillWidth: true

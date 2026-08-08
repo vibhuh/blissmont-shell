@@ -126,6 +126,7 @@ Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
+            ScrollBar.vertical: ThinScrollBar {}
             visible: rvm.active
             model: PosEngineBridge.returnLines
             spacing: Theme.unit
