@@ -145,8 +145,10 @@ void PosEngineBridge::applyEvent(const Event& evt) {
                              QString::fromStdString(evt.shift_closed().refunds_str()));
             break;
         case E::kSyncStatusChanged:
-            emit syncStatusChanged(evt.sync_status_changed().online(),
-                                   evt.sync_status_changed().pending());
+            emit syncStatusChanged(
+                evt.sync_status_changed().online(), evt.sync_status_changed().pending(),
+                evt.sync_status_changed().config_stale(),
+                QString::fromStdString(evt.sync_status_changed().config_verified_at()));
             break;
         case E::kConfigUpdated: {
             // Engine-relayed device config (spec §3 gap, closed in contracts v1.1.0).

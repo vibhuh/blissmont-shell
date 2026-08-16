@@ -22,10 +22,32 @@ void ConnectionService::setConnected(bool value) {
     emit changed();
 }
 
-void ConnectionService::applySyncStatus(bool online, int pending) {
-    if (engineOnline_ == online && pendingOutbox_ == pending) return;
+// configStatusText is what a human is shown when the config has gone stale. The
+// two cases read differently on purpose: "the server is reachable and we still
+// cannot refresh" is an operational defect worth escalating, while "we have been
+// offline a long time" is something the shop already knows and can act on.
+QString ConnectionService::configStatusText() const {
+    if (!configStale_) return {};
+    if (engineOnline_) {
+        // Online and unable to refresh: the shape of a server-side fault, not an
+        // outage. Say so plainly — this is the case that hid for three weeks.
+        return QStringLiteral("Config not updating — contact support");
+    }
+    return configVerifiedAt_.isEmpty()
+               ? QStringLiteral("Config never synced")
+               : QStringLiteral("Config last synced %1").arg(configVerifiedAt_);
+}
+
+void ConnectionService::applySyncStatus(bool online, int pending, bool configStale,
+                                        const QString& configVerifiedAt) {
+    if (engineOnline_ == online && pendingOutbox_ == pending && configStale_ == configStale &&
+        configVerifiedAt_ == configVerifiedAt) {
+        return;
+    }
     engineOnline_ = online;
     pendingOutbox_ = pending;
+    configStale_ = configStale;
+    configVerifiedAt_ = configVerifiedAt;
     emit changed();
 }
 

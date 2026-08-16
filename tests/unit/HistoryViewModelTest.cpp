@@ -110,10 +110,12 @@ TEST(HistoryViewModel, LocalOnlyHintTracksEngineOnline) {
     hvm.setBridge(&bridge);
     hvm.setConnection(&conn);
 
-    conn.applySyncStatus(/*online=*/false, /*pending=*/0);
+    conn.applySyncStatus(/*online=*/false, /*pending=*/0, /*configStale=*/false,
+                         /*configVerifiedAt=*/QString());
     EXPECT_TRUE(hvm.localOnlyHint());
 
-    conn.applySyncStatus(/*online=*/true, /*pending=*/0);
+    conn.applySyncStatus(/*online=*/true, /*pending=*/0, /*configStale=*/false,
+                         /*configVerifiedAt=*/QString());
     EXPECT_FALSE(hvm.localOnlyHint());
 }
 

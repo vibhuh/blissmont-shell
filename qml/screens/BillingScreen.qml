@@ -263,6 +263,9 @@ Item {
             message: screen.notice !== "" ? screen.notice : screen.terminalState
             connectionText: ConnectionService.statusText
             online: ConnectionService.connected
+            // Empty unless the engine has declared the config stale — so this costs
+            // nothing on a healthy till and is impossible to miss on an unhealthy one.
+            configWarning: ConnectionService.configStatusText
         }
 
         // ── Zone 4: bottom action bar ─────────────────────────────────────────

@@ -18,8 +18,11 @@ ApplicationWindow {
         function onConnectionChanged() {
             ConnectionService.setConnected(PosEngineBridge.connected)
         }
-        function onSyncStatusChanged(online, pending) {
-            ConnectionService.applySyncStatus(online, pending)
+        // Sync status carries config freshness too (contracts v1.18.0): configStale
+        // is the engine's verdict, already thresholded there, so nothing here
+        // re-decides when to worry.
+        function onSyncStatusChanged(online, pending, configStale, configVerifiedAt) {
+            ConnectionService.applySyncStatus(online, pending, configStale, configVerifiedAt)
         }
         // Engine relays device config over the Session stream (contracts v1.1.0). The
         // engine re-pushes it on every (re)connect, so ConfigService rehydrates here
