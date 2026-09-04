@@ -7,13 +7,24 @@ ConnectionService::ConnectionService(QObject* parent) : QObject(parent) {}
 
 QString ConnectionService::statusText() const {
     if (!connected_) return QStringLiteral("Disconnected from engine");
+    // Age of the oldest queued order. Two hours of pending orders is a
+    // materially different alarm from two minutes, and the count alone
+    // cannot tell them apart.
+    QString age;
+    if (pendingOutbox_ > 0 && oldestPendingAgeSecs_ > 0) {
+        const qint64 h = oldestPendingAgeSecs_ / 3600;
+        const qint64 m = (oldestPendingAgeSecs_ % 3600) / 60;
+        age = h > 0 ? QStringLiteral(" (%1h %2m)").arg(h).arg(m)
+                    : QStringLiteral(" (%1m)").arg(qMax(m, qint64(1)));
+    }
     if (!engineOnline_) {
         return pendingOutbox_ > 0
-                   ? QStringLiteral("Offline — %1 pending").arg(pendingOutbox_)
+                   ? QStringLiteral("Offline — %1 pending%2").arg(pendingOutbox_).arg(age)
                    : QStringLiteral("Offline");
     }
-    return pendingOutbox_ > 0 ? QStringLiteral("Online — syncing %1").arg(pendingOutbox_)
-                              : QStringLiteral("Online");
+    return pendingOutbox_ > 0
+               ? QStringLiteral("Online — syncing %1%2").arg(pendingOutbox_).arg(age)
+               : QStringLiteral("Online");
 }
 
 void ConnectionService::setConnected(bool value) {
