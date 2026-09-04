@@ -163,7 +163,7 @@ signals:
                       const QString& received, const QString& change);
     void itemNotFound(const QString& barcode);
     void commandRejected(const QString& code, const QString& message);
-    void shiftStateChanged(const QString& shiftId, const QString& status);
+    void shiftStateChanged(const QString& shiftId, const QString& status, const QString& cashierName);
     // Blind-count reveal after a successful CloseShift: the opening float, the counted cash, the
     // variance (counted − expected; negative = short, positive = over), and — additive in
     // terminal v1.9.0 — the full drawer reconciliation the variance is measured against:

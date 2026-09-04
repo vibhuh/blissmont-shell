@@ -131,7 +131,8 @@ void PosEngineBridge::applyEvent(const Event& evt) {
             break;
         case E::kShiftStateChanged:
             emit shiftStateChanged(QString::fromStdString(evt.shift_state_changed().shift_id()),
-                                   QString::fromStdString(evt.shift_state_changed().status()));
+                                   QString::fromStdString(evt.shift_state_changed().status()),
+                                   QString::fromStdString(evt.shift_state_changed().cashier()));
             break;
         case E::kShiftClosed:
             emit shiftClosed(QString::fromStdString(evt.shift_closed().opening_float_str()),
