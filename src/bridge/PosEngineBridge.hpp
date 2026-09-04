@@ -176,7 +176,7 @@ signals:
     // ONLINE and its config pull is failing (a server-side defect), and only after
     // 24 hours when the terminal is simply offline (the designed-for case). Keeping
     // the threshold policy in the engine means the shell cannot disagree with it.
-    void syncStatusChanged(bool online, int pending, bool configStale, const QString& configVerifiedAt);
+    void syncStatusChanged(bool online, int pending, bool configStale, const QString& configVerifiedAt, bool authFailed, qint64 oldestPendingAgeSecs);
     // Device config relayed by the engine over the Session stream (contracts
     // v1.1.0; payment methods added in v1.2.0). Emitted on connect, on reconnect,
     // and on every config change, with the device-domain fields the UI gates on.

@@ -48,12 +48,14 @@ public:
     [[nodiscard]] QString statusText() const;
 
     [[nodiscard]] bool configStale() const { return configStale_; }
+    [[nodiscard]] bool authFailed() const { return authFailed_; }
+    [[nodiscard]] qint64 oldestPendingAgeSecs() const { return oldestPendingAgeSecs_; }
     [[nodiscard]] QString configVerifiedAt() const { return configVerifiedAt_; }
     [[nodiscard]] QString configStatusText() const;
 
 public slots:
     void setConnected(bool value);
-    void applySyncStatus(bool online, int pending, bool configStale, const QString& configVerifiedAt);
+    void applySyncStatus(bool online, int pending, bool configStale, const QString& configVerifiedAt, bool authFailed, qint64 oldestPendingAgeSecs);
 
 signals:
     void changed();
@@ -63,6 +65,8 @@ private:
     bool engineOnline_ = false;
     int pendingOutbox_ = 0;
     bool configStale_ = false;
+    bool authFailed_ = false;
+    qint64 oldestPendingAgeSecs_ = 0;
     QString configVerifiedAt_;
 };
 

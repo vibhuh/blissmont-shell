@@ -29,7 +29,7 @@ constexpr bool kFresh = false;
 TEST(ConnectionService, HealthyConfigShowsNoWarning) {
     ConnectionService conn;
     conn.setConnected(true);
-    conn.applySyncStatus(kOnline, 0, kFresh, QStringLiteral("2026-08-16T10:00:00Z"));
+    conn.applySyncStatus(kOnline, 0, kFresh, QStringLiteral("2026-08-16T10:00:00Z"), false, 0);
 
     EXPECT_FALSE(conn.configStale());
     EXPECT_TRUE(conn.configStatusText().isEmpty())
@@ -40,7 +40,7 @@ TEST(ConnectionService, HealthyConfigShowsNoWarning) {
 TEST(ConnectionService, StaleWhileOnlineReadsAsAFault) {
     ConnectionService conn;
     conn.setConnected(true);
-    conn.applySyncStatus(kOnline, 0, kStale, QStringLiteral("2026-08-16T09:00:00Z"));
+    conn.applySyncStatus(kOnline, 0, kStale, QStringLiteral("2026-08-16T09:00:00Z"), false, 0);
 
     EXPECT_TRUE(conn.configStale());
     const QString text = conn.configStatusText();
@@ -55,7 +55,7 @@ TEST(ConnectionService, StaleWhileOnlineReadsAsAFault) {
 TEST(ConnectionService, StaleWhileOfflineReadsAsAnOutage) {
     ConnectionService conn;
     conn.setConnected(true);
-    conn.applySyncStatus(kOffline, 0, kStale, QStringLiteral("2026-08-14T09:00:00Z"));
+    conn.applySyncStatus(kOffline, 0, kStale, QStringLiteral("2026-08-14T09:00:00Z"), false, 0);
 
     const QString text = conn.configStatusText();
     EXPECT_FALSE(text.isEmpty());
@@ -73,7 +73,7 @@ TEST(ConnectionService, StaleWhileOfflineReadsAsAnOutage) {
 TEST(ConnectionService, NeverSyncedIsDistinctFromStaleWithATimestamp) {
     ConnectionService conn;
     conn.setConnected(true);
-    conn.applySyncStatus(kOffline, 0, kStale, QString());
+    conn.applySyncStatus(kOffline, 0, kStale, QString(), false, 0);
 
     // A terminal that has NEVER pulled config is materially different from one whose
     // config is merely old: it is running on defaults nobody chose. Rendering an
@@ -84,10 +84,10 @@ TEST(ConnectionService, NeverSyncedIsDistinctFromStaleWithATimestamp) {
 
 TEST(ConnectionService, FreshnessChangeNotifiesTheView) {
     ConnectionService conn;
-    conn.applySyncStatus(kOnline, 0, kFresh, QStringLiteral("2026-08-16T10:00:00Z"));
+    conn.applySyncStatus(kOnline, 0, kFresh, QStringLiteral("2026-08-16T10:00:00Z"), false, 0);
 
     QSignalSpy spy(&conn, &ConnectionService::changed);
-    conn.applySyncStatus(kOnline, 0, kStale, QStringLiteral("2026-08-16T10:00:00Z"));
+    conn.applySyncStatus(kOnline, 0, kStale, QStringLiteral("2026-08-16T10:00:00Z"), false, 0);
     EXPECT_EQ(spy.count(), 1)
         << "the config going stale must notify: without it the badge appears only when "
            "some unrelated field happens to change";
@@ -95,6 +95,6 @@ TEST(ConnectionService, FreshnessChangeNotifiesTheView) {
     // And an unchanged status must NOT notify — the engine emits SyncStatusChanged on
     // every tick (every 5s), so a service that signalled each time would repaint the
     // whole status bar continuously.
-    conn.applySyncStatus(kOnline, 0, kStale, QStringLiteral("2026-08-16T10:00:00Z"));
+    conn.applySyncStatus(kOnline, 0, kStale, QStringLiteral("2026-08-16T10:00:00Z"), false, 0);
     EXPECT_EQ(spy.count(), 1) << "an identical status re-emitted must not signal";
 }

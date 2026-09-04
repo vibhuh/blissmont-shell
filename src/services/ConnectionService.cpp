@@ -39,15 +39,19 @@ QString ConnectionService::configStatusText() const {
 }
 
 void ConnectionService::applySyncStatus(bool online, int pending, bool configStale,
-                                        const QString& configVerifiedAt) {
+                                        const QString& configVerifiedAt, bool authFailed,
+                                        qint64 oldestPendingAgeSecs) {
     if (engineOnline_ == online && pendingOutbox_ == pending && configStale_ == configStale &&
-        configVerifiedAt_ == configVerifiedAt) {
+        configVerifiedAt_ == configVerifiedAt && authFailed_ == authFailed &&
+        oldestPendingAgeSecs_ == oldestPendingAgeSecs) {
         return;
     }
     engineOnline_ = online;
     pendingOutbox_ = pending;
     configStale_ = configStale;
     configVerifiedAt_ = configVerifiedAt;
+    authFailed_ = authFailed;
+    oldestPendingAgeSecs_ = oldestPendingAgeSecs;
     emit changed();
 }
 

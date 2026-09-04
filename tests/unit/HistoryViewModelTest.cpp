@@ -111,11 +111,11 @@ TEST(HistoryViewModel, LocalOnlyHintTracksEngineOnline) {
     hvm.setConnection(&conn);
 
     conn.applySyncStatus(/*online=*/false, /*pending=*/0, /*configStale=*/false,
-                         /*configVerifiedAt=*/QString());
+                         /*configVerifiedAt=*/QString(), /*authFailed=*/false, /*oldestPendingAgeSecs=*/0);
     EXPECT_TRUE(hvm.localOnlyHint());
 
     conn.applySyncStatus(/*online=*/true, /*pending=*/0, /*configStale=*/false,
-                         /*configVerifiedAt=*/QString());
+                         /*configVerifiedAt=*/QString(), /*authFailed=*/false, /*oldestPendingAgeSecs=*/0);
     EXPECT_FALSE(hvm.localOnlyHint());
 }
 

@@ -21,8 +21,8 @@ ApplicationWindow {
         // Sync status carries config freshness too (contracts v1.18.0): configStale
         // is the engine's verdict, already thresholded there, so nothing here
         // re-decides when to worry.
-        function onSyncStatusChanged(online, pending, configStale, configVerifiedAt) {
-            ConnectionService.applySyncStatus(online, pending, configStale, configVerifiedAt)
+        function onSyncStatusChanged(online, pending, configStale, configVerifiedAt, authFailed, oldestPendingAgeSecs) {
+            ConnectionService.applySyncStatus(online, pending, configStale, configVerifiedAt, authFailed, oldestPendingAgeSecs)
         }
         // Engine relays device config over the Session stream (contracts v1.1.0). The
         // engine re-pushes it on every (re)connect, so ConfigService rehydrates here
