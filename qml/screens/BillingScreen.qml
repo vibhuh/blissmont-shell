@@ -320,4 +320,36 @@ Item {
             onClosed: { screen.workflow = ""; screen.focusSearch() }
         }
     }
+
+    // Blocking auth-failure banner. The terminal's API key has been rotated or
+    // revoked server-side; the cashier cannot fix this. No dismiss button —
+    // it clears only when the key is repaired and a heartbeat succeeds.
+    Rectangle {
+        anchors.fill: parent
+        visible: ConnectionService.authFailed
+        color: Qt.rgba(Theme.danger.r, Theme.danger.g, Theme.danger.b, 0.92)
+        z: 300
+        Column {
+            anchors.centerIn: parent
+            spacing: Theme.gap
+            width: parent.width * 0.8
+            Text {
+                width: parent.width
+                text: qsTr("Terminal not authorised — contact administrator")
+                font.pixelSize: Theme.fontLarge
+                font.bold: true
+                color: "white"
+                horizontalAlignment: Text.AlignHCenter
+                wrapMode: Text.WordWrap
+            }
+            Text {
+                width: parent.width
+                text: qsTr("Orders cannot reach the server. Billing continues locally.")
+                font.pixelSize: Theme.fontBody
+                color: Qt.rgba(1, 1, 1, 0.85)
+                horizontalAlignment: Text.AlignHCenter
+                wrapMode: Text.WordWrap
+            }
+        }
+    }
 }
