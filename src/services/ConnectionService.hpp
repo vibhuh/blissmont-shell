@@ -37,7 +37,8 @@ class ConnectionService : public QObject {
     // about when to worry.
     Q_PROPERTY(bool configStale READ configStale NOTIFY changed)
     Q_PROPERTY(QString configVerifiedAt READ configVerifiedAt NOTIFY changed)
-    Q_PROPERTY(QString configStatusText READ configStatusText NOTIFY changed)
+    Q_PROPERTY(bool authFailed READ authFailed NOTIFY changed)
+    Q_PROPERTY(qint64 oldestPendingAgeSecs READ oldestPendingAgeSecs NOTIFY changed)
 
 public:
     explicit ConnectionService(QObject* parent = nullptr);
