@@ -108,6 +108,8 @@ public:
     Q_INVOKABLE void searchByCustomer(const QString& query);
     Q_INVOKABLE void reprintBill(const QString& receiptNo);
     Q_INVOKABLE void runEod();
+    Q_INVOKABLE void setDeviceConfig(int paperWidthMm, bool hasAutoPrintOverride, bool autoPrintOverride);
+    Q_INVOKABLE void printTestPage();
     // Begin-Day (UX §12) — open the day's shift with an opening float. The engine emits
     // ShiftStateChanged(open) on success, or CommandRejected(SHIFT_ALREADY_OPEN) if one is
     // already open. cashierUserId identifies the opening cashier (no shell login yet — a

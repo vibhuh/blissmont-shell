@@ -494,7 +494,26 @@ void PosEngineBridge::runEod() {
     cmd.mutable_run_eod();
     writeCommand(std::move(cmd));
 }
+// Device-local printer settings. paperWidthMm of 0 leaves the width unchanged.
+// The auto-print override is tri-state on the wire (BoolValue): absent means
+// "clear the override and follow the server snapshot", so hasAutoPrintOverride
+// false deliberately sends no value at all.
+void PosEngineBridge::setDeviceConfig(int paperWidthMm, bool hasAutoPrintOverride,
+                                      bool autoPrintOverride) {
+    Command cmd;
+    auto* sdc = cmd.mutable_set_device_config();
+    sdc->set_paper_width_mm(paperWidthMm);
+    if (hasAutoPrintOverride) {
+        sdc->mutable_auto_print_override()->set_value(autoPrintOverride);
+    }
+    writeCommand(std::move(cmd));
+}
 
+void PosEngineBridge::printTestPage() {
+    Command cmd;
+    cmd.mutable_print_test_page();
+    writeCommand(std::move(cmd));
+}
 void PosEngineBridge::openShift(const QString& cashierUserId, const QString& openingCashStr,
                                 const QString& shiftMasterId, const QString& authReason,
                                 const QString& authorizedBy, const QString& operatorPin) {
