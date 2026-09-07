@@ -96,6 +96,15 @@ void ConfigService::applyConfig(bool allowReturns, bool payoutEnabled, bool allo
     emit changed();
 }
 
+void ConfigService::applyDeviceConfig(int paperWidthMm, bool autoPrintReceipt) {
+    if (paperWidthMm_ == paperWidthMm && autoPrintReceipt_ == autoPrintReceipt) {
+        return;
+    }
+    paperWidthMm_ = paperWidthMm;
+    autoPrintReceipt_ = autoPrintReceipt;
+    emit changed();
+}
+
 void ConfigService::setThemeMode(const QString& mode) {
     if (themeMode_ == mode) return;  // idempotent — no churn on re-apply
     themeMode_ = mode;

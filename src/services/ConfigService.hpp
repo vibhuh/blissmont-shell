@@ -62,6 +62,14 @@ class ConfigService : public QObject {
     // "light" | "dark"; Theme.qml binds its initial mode to this. A live toggle in the UI
     // detaches from this, so a manual switch is not overridden by a config rehydrate.
     Q_PROPERTY(QString themeMode READ themeMode NOTIFY changed)
+    // Device-local printer settings (contracts v1.24.0). Unlike every other
+    // property here these originate on the DEVICE, not the server snapshot —
+    // they arrive on their own signal for that reason. autoPrintReceipt is the
+    // EFFECTIVE value: the device override where one is set, otherwise the
+    // server's. The settings screen shows what will happen, not which layer
+    // decided it.
+    Q_PROPERTY(int paperWidthMm READ paperWidthMm NOTIFY changed)
+    Q_PROPERTY(bool autoPrintReceipt READ autoPrintReceipt NOTIFY changed)
     // ── Shift management (contracts v1.10.0) ──────────────────────────────────────────────
     // shiftManagementMode ("single"|"multiple"|"scheduled") selects which Begin-Register screen
     // the shell shows and whether the Tasks menu carries Begin/Close-Shift items. The four
@@ -96,6 +104,10 @@ public:
     [[nodiscard]] bool allowPartialReturn() const { return allowPartialReturn_; }
     [[nodiscard]] QString heldCartExpiry() const { return heldCartExpiry_; }
     [[nodiscard]] QString themeMode() const { return themeMode_; }
+    [[nodiscard]] int paperWidthMm() const { return paperWidthMm_; }
+    [[nodiscard]] bool autoPrintReceipt() const { return autoPrintReceipt_; }
+    // Applied from the bridge's deviceConfigUpdated signal.
+    void applyDeviceConfig(int paperWidthMm, bool autoPrintReceipt);
     [[nodiscard]] QString shiftManagementMode() const { return shiftManagementMode_; }
     [[nodiscard]] bool requireAuthBeforeStart() const { return requireAuthBeforeStart_; }
     [[nodiscard]] bool requireAuthAfterEnd() const { return requireAuthAfterEnd_; }
@@ -154,6 +166,8 @@ private:
     bool allowPartialReturn_ = false;
     QString heldCartExpiry_;  // duration string e.g. "24h"; empty → engine end-of-day default
     QString themeMode_ = QStringLiteral("light");  // configurable default appearance; POS = light
+    int  paperWidthMm_     = 0;      // 0 = renderer default until the engine reports
+    bool autoPrintReceipt_ = false;
     // Shift management — default "multiple" matches the engine's COALESCE default (today's
     // unrestricted behaviour), so a pre-hydration shell shows the Multiple screen, not a blank one.
     QString shiftManagementMode_ = QStringLiteral("multiple");

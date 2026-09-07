@@ -38,6 +38,9 @@ ApplicationWindow {
                                       shiftManagementMode, requireAuthBeforeStart, requireAuthAfterEnd, requireAuthDifferentShift,
                                       requireAuthReopenCompleted, shiftMasters)
         }
+	function onDeviceConfigUpdated(paperWidthMm, autoPrintReceipt) {
+            ConfigService.applyDeviceConfig(paperWidthMm, autoPrintReceipt)
+        }
     }
 
     // Connect to the locally-running engine on startup; on every (re)connect the engine
