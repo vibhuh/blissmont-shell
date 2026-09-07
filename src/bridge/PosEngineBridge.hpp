@@ -210,6 +210,13 @@ signals:
                        bool requireAuthBeforeStart, bool requireAuthAfterEnd,
                        bool requireAuthDifferentShift, bool requireAuthReopenCompleted,
                        const QVariantList& shiftMasters);
+    // Device-local printer settings, carried on the same ConfigUpdated event but
+    // emitted separately: every value on configUpdated above originates on the
+    // SERVER and travels server → engine → shell. These two originate on the
+    // DEVICE — the engine's own SQLite settings, merged onto the message because
+    // one was already going this way. A separate signal keeps that distinction
+    // legible rather than hiding two device values among two dozen server ones.
+    void deviceConfigUpdated(int paperWidthMm, bool autoPrintReceipt);
     void authRequired(const QString& action, const QString& reason);
     // A payout was recorded (UX §12): the engine echoes the provisional/local payout id,
     // amount and category after RecordPayout. The shell surfaces this as the payout

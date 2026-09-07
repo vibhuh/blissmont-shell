@@ -214,6 +214,8 @@ void PosEngineBridge::applyEvent(const Event& evt) {
                                cfg.require_auth_before_start(), cfg.require_auth_after_end(),
                                cfg.require_auth_different_shift(), cfg.require_auth_reopen_completed(),
                                shiftMasters);
+            // Device-local settings on the same event — see the signal comment.
+            emit deviceConfigUpdated(cfg.paper_width_mm(), cfg.auto_print_receipt());
             break;
         }
         case E::kPayoutRecorded:
