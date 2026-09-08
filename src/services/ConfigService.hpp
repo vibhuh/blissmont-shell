@@ -106,8 +106,6 @@ public:
     [[nodiscard]] QString themeMode() const { return themeMode_; }
     [[nodiscard]] int paperWidthMm() const { return paperWidthMm_; }
     [[nodiscard]] bool autoPrintReceipt() const { return autoPrintReceipt_; }
-    // Applied from the bridge's deviceConfigUpdated signal.
-    void applyDeviceConfig(int paperWidthMm, bool autoPrintReceipt);
     [[nodiscard]] QString shiftManagementMode() const { return shiftManagementMode_; }
     [[nodiscard]] bool requireAuthBeforeStart() const { return requireAuthBeforeStart_; }
     [[nodiscard]] bool requireAuthAfterEnd() const { return requireAuthAfterEnd_; }
@@ -116,6 +114,9 @@ public:
     [[nodiscard]] QVariantList shiftMasters() const { return shiftMasters_; }
 
 public slots:
+    // Device-local printer settings, from the bridge's deviceConfigUpdated signal.
+    // A slot, not a plain method — QML can only call slots and Q_INVOKABLEs.
+    void applyDeviceConfig(int paperWidthMm, bool autoPrintReceipt);
     // Hydrate from an engine ConfigUpdated event (relayed by PosEngineBridge, wired
     // in QML). Idempotent: re-applying the same values is a no-op; this is what makes
     // reconnect rehydration cheap (the engine re-pushes config on every (re)connect).

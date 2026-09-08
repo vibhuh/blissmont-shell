@@ -53,6 +53,64 @@ Item {
             }
         }
 
+        // ── Printer — device-local, like Appearance above ─────────────────────
+        // Paper width and auto-print are the DEVICE's own settings, not company
+        // config: they live in the engine's local store, apply immediately, and
+        // differ legitimately between two tills of the same company. That is the
+        // same category as the theme toggle, which is why they are editable here
+        // while everything below this divider is not.
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: Theme.unit
+            Text {
+                Layout.fillWidth: true
+                text: qsTr("Paper width")
+                color: Theme.textMuted
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.fontBody
+            }
+            ComboBox {
+                id: paperWidth
+                model: [58, 80, 104]
+                // The engine reports 0 until it has a width; show nothing selected
+                // rather than implying a width the printer may not be set to.
+                currentIndex: model.indexOf(ConfigService.paperWidthMm)
+                onActivated: PosEngineBridge.setDeviceConfig(model[currentIndex], false, false)
+            }
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: Theme.unit
+            Text {
+                Layout.fillWidth: true
+                text: qsTr("Auto-print receipt")
+                color: Theme.textMuted
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.fontBody
+            }
+            Switch {
+                checked: ConfigService.autoPrintReceipt
+                onToggled: PosEngineBridge.setDeviceConfig(0, true, checked)
+            }
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: Theme.unit
+            Text {
+                Layout.fillWidth: true
+                text: qsTr("Test print")
+                color: Theme.textMuted
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.fontBody
+            }
+            Button {
+                text: qsTr("Print test page")
+                onClicked: PosEngineBridge.printTestPage()
+            }
+        }
+
         Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
 
         // ── Resolved terminal config (read-only) ──────────────────────────────
