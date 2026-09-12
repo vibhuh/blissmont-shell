@@ -83,7 +83,6 @@ set(SHELL_QML_FILES
   components/Icon.qml
   components/ListRow.qml
   components/PinPad.qml
-  components/ScanField.qml
   components/BillTable.qml
   components/ThinScrollBar.qml
   components/StatusLine.qml
@@ -131,7 +130,6 @@ qt_add_qml_module(shell
     ${CMAKE_SOURCE_DIR}/qml/components/Icon.qml
     ${CMAKE_SOURCE_DIR}/qml/components/ListRow.qml
     ${CMAKE_SOURCE_DIR}/qml/components/PinPad.qml
-    ${CMAKE_SOURCE_DIR}/qml/components/ScanField.qml
     ${CMAKE_SOURCE_DIR}/qml/components/BillTable.qml
     ${CMAKE_SOURCE_DIR}/qml/components/ThinScrollBar.qml
     ${CMAKE_SOURCE_DIR}/qml/components/StatusLine.qml
