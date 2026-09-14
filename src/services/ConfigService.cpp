@@ -52,7 +52,8 @@ void ConfigService::applyConfig(bool allowReturns, bool payoutEnabled, bool allo
                                 const QString& storeName, const QString& registerName,
                                 const QString& shiftManagementMode, bool requireAuthBeforeStart,
                                 bool requireAuthAfterEnd, bool requireAuthDifferentShift,
-                                bool requireAuthReopenCompleted, const QVariantList& shiftMasters) {
+                                bool requireAuthReopenCompleted, const QVariantList& shiftMasters,
+                                const QString& reprintRequiresAuth) {
     const QVariantList methods = enabledSorted(paymentMethods);
     const QString symbol = canonicalSymbol(currencySymbol);
     if (loaded_ && allowReturns_ == allowReturns && payoutEnabled_ == payoutEnabled &&
@@ -68,7 +69,7 @@ void ConfigService::applyConfig(bool allowReturns, bool payoutEnabled, bool allo
         requireAuthAfterEnd_ == requireAuthAfterEnd &&
         requireAuthDifferentShift_ == requireAuthDifferentShift &&
         requireAuthReopenCompleted_ == requireAuthReopenCompleted &&
-        shiftMasters_ == shiftMasters) {
+        shiftMasters_ == shiftMasters && reprintRequiresAuth_ == reprintRequiresAuth) {
         return;  // unchanged — no spurious notify on every reconnect
     }
     loaded_ = true;
@@ -93,6 +94,7 @@ void ConfigService::applyConfig(bool allowReturns, bool payoutEnabled, bool allo
     requireAuthDifferentShift_ = requireAuthDifferentShift;
     requireAuthReopenCompleted_ = requireAuthReopenCompleted;
     shiftMasters_ = shiftMasters;
+    reprintRequiresAuth_ = reprintRequiresAuth;
     emit changed();
 }
 

@@ -213,7 +213,8 @@ void PosEngineBridge::applyEvent(const Event& evt) {
                                QString::fromStdString(cfg.shift_management_mode()),
                                cfg.require_auth_before_start(), cfg.require_auth_after_end(),
                                cfg.require_auth_different_shift(), cfg.require_auth_reopen_completed(),
-                               shiftMasters);
+                               shiftMasters,
+                               QString::fromStdString(cfg.reprint_requires_auth()));
             // Device-local settings on the same event — see the signal comment.
             emit deviceConfigUpdated(cfg.paper_width_mm(), cfg.auto_print_receipt());
             break;

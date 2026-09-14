@@ -53,6 +53,7 @@ class ConfigService : public QObject {
     Q_PROPERTY(bool allowBlindReturn READ allowBlindReturn NOTIFY changed)
     Q_PROPERTY(QString refundTenderMode READ refundTenderMode NOTIFY changed)     // original|cash|both
     Q_PROPERTY(QString returnRequiresAuth READ returnRequiresAuth NOTIFY changed) // always|config|never
+    Q_PROPERTY(QString reprintRequiresAuth READ reprintRequiresAuth NOTIFY changed) // always|never
     Q_PROPERTY(bool restockDefault READ restockDefault NOTIFY changed)
     Q_PROPERTY(bool allowPartialReturn READ allowPartialReturn NOTIFY changed)
     // ── Suspend/resume (UX §10) — display/UX only; the engine enforces expiry ──
@@ -100,6 +101,7 @@ public:
     [[nodiscard]] bool allowBlindReturn() const { return allowBlindReturn_; }
     [[nodiscard]] QString refundTenderMode() const { return refundTenderMode_; }
     [[nodiscard]] QString returnRequiresAuth() const { return returnRequiresAuth_; }
+    [[nodiscard]] QString reprintRequiresAuth() const { return reprintRequiresAuth_; }
     [[nodiscard]] bool restockDefault() const { return restockDefault_; }
     [[nodiscard]] bool allowPartialReturn() const { return allowPartialReturn_; }
     [[nodiscard]] QString heldCartExpiry() const { return heldCartExpiry_; }
@@ -137,7 +139,8 @@ public slots:
                      bool requireAuthBeforeStart = false, bool requireAuthAfterEnd = false,
                      bool requireAuthDifferentShift = false,
                      bool requireAuthReopenCompleted = false,
-                     const QVariantList& shiftMasters = QVariantList());
+                     const QVariantList& shiftMasters = QVariantList(),
+                     const QString& reprintRequiresAuth = QStringLiteral("never"));
 
     // Appearance default (SHELL_KEYBOARD_LOOKUP brief, Part 2). Kept OFF the wired
     // ConfigUpdated arm (applyConfig stays arity-matched to the bridge signal — no contract
@@ -163,6 +166,7 @@ private:
     bool allowBlindReturn_ = false;
     QString refundTenderMode_ = QStringLiteral("cash");
     QString returnRequiresAuth_ = QStringLiteral("never");
+    QString reprintRequiresAuth_ = QStringLiteral("never");
     bool restockDefault_ = false;
     bool allowPartialReturn_ = false;
     QString heldCartExpiry_;  // duration string e.g. "24h"; empty → engine end-of-day default

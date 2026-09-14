@@ -209,7 +209,11 @@ signals:
                        const QString& shiftManagementMode,
                        bool requireAuthBeforeStart, bool requireAuthAfterEnd,
                        bool requireAuthDifferentShift, bool requireAuthReopenCompleted,
-                       const QVariantList& shiftMasters);
+                       const QVariantList& shiftMasters,
+                       // Reprint gate (v1.26.0): "always" | "never". Server policy —
+                       // an owner control against reprint malpractice, deliberately
+                       // NOT device-local, so the clerk it restricts cannot switch it.
+                       const QString& reprintRequiresAuth);
     // Device-local printer settings, carried on the same ConfigUpdated event but
     // emitted separately: every value on configUpdated above originates on the
     // SERVER and travels server → engine → shell. These two originate on the
