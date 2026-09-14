@@ -90,13 +90,14 @@ void HistoryViewModel::searchByCustomer(const QString& query) {
     bridge_->searchByCustomer(query.trimmed());
 }
 
-void HistoryViewModel::reprint(const QString& receiptNo) {
+void HistoryViewModel::reprint(const QString& receiptNo, const QString& authReason,
+                               const QString& authorizedBy) {
     if (!bridge_ || receiptNo.trimmed().isEmpty()) return;
     pendingReprint_ = true;
     // Launched from the list (no detail showing) → drop the echoed detail to stay on the list;
     // launched from detail → keep it (same bill, view unchanged).
     reprintKeepList_ = !detailActive();
-    bridge_->reprintBill(receiptNo.trimmed());
+    bridge_->reprintBill(receiptNo.trimmed(), authReason, authorizedBy);
 }
 
 void HistoryViewModel::startReturn(const QString& receiptNo) {

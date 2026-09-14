@@ -106,7 +106,9 @@ public:
     Q_INVOKABLE void recallRecent(int limit);
     Q_INVOKABLE void recallByReceiptNo(const QString& receiptNo);
     Q_INVOKABLE void searchByCustomer(const QString& query);
-    Q_INVOKABLE void reprintBill(const QString& receiptNo);
+    Q_INVOKABLE void reprintBill(const QString& receiptNo,
+                                 const QString& authReason = QString(),
+                                 const QString& authorizedBy = QString());
     Q_INVOKABLE void runEod();
     Q_INVOKABLE void setDeviceConfig(int paperWidthMm, bool hasAutoPrintOverride, bool autoPrintOverride);
     Q_INVOKABLE void printTestPage();

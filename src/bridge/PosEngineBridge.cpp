@@ -486,9 +486,18 @@ void PosEngineBridge::searchByCustomer(const QString& query) {
     writeCommand(std::move(cmd));
 }
 
-void PosEngineBridge::reprintBill(const QString& receiptNo) {
+void PosEngineBridge::reprintBill(const QString& receiptNo, const QString& authReason,
+                                  const QString& authorizedBy) {
     Command cmd;
-    cmd.mutable_reprint_bill()->set_receipt_no(receiptNo.toStdString());
+    auto* rb = cmd.mutable_reprint_bill();
+    rb->set_receipt_no(receiptNo.toStdString());
+    // Supervisor attestation on a re-issue after AuthRequired(reprint) — clears the
+    // engine's reprint_requires_auth hold. Same mechanism as closeShift.
+    if (!authReason.isEmpty() || !authorizedBy.isEmpty()) {
+        auto* sa = rb->mutable_supervisor_auth();
+        sa->set_reason(authReason.toStdString());
+        sa->set_authorized_by(authorizedBy.toStdString());
+    }
     writeCommand(std::move(cmd));
 }
 

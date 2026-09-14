@@ -31,6 +31,45 @@ Item {
         function onReturnRequested() { root.navigateReturn() }
     }
 
+    // Supervisor authorisation for a reprint (reprint_requires_auth = "always").
+    // The engine HOLDS the reprint and emits AuthRequired(reprint); the supervisor
+    // attests and we re-issue the SAME receipt with the attestation. Without this
+    // the hold is silent — the clerk presses reprint and nothing happens at all.
+    // Every reprint goes through here so the receipt is known if the engine holds it.
+    function doReprint(receiptNo) {
+        root.pendingReprintReceiptNo = receiptNo
+        hvm.reprint(receiptNo)
+    }
+
+    property string pendingReprintReceiptNo: ""
+    property string reprintAuthReason: ""
+
+    Connections {
+        target: PosEngineBridge
+        function onAuthRequired(action, reason) {
+            if (action !== "reprint") return
+            root.reprintAuthReason = reason
+            // pendingReprintReceiptNo was stamped by the caller before dispatch.
+        }
+    }
+
+    SupervisorAuthDialog {
+        active: root.pendingReprintReceiptNo !== "" && root.reprintAuthReason !== ""
+        blockedReason: root.reprintAuthReason
+        heading: qsTr("Supervisor authorization · reprint")
+        confirmText: qsTr("Authorize & Reprint")
+        onAuthorized: (reason, authorizedBy) => {
+            const rc = root.pendingReprintReceiptNo
+            root.pendingReprintReceiptNo = ""
+            root.reprintAuthReason = ""
+            hvm.reprint(rc, reason, authorizedBy)
+        }
+        onCancelled: {
+            root.pendingReprintReceiptNo = ""
+            root.reprintAuthReason = ""
+        }
+    }
+
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: Theme.pad
@@ -102,8 +141,8 @@ Item {
             keyNavigationEnabled: true
 
             // The fast path: arrow to a bill, Enter reprints it instantly as a DUPLICATE.
-            Keys.onReturnPressed: if (currentItem) hvm.reprint(currentItem.receiptNo)
-            Keys.onEnterPressed: if (currentItem) hvm.reprint(currentItem.receiptNo)
+            Keys.onReturnPressed: if (currentItem) root.doReprint(currentItem.receiptNo)
+            Keys.onEnterPressed: if (currentItem) root.doReprint(currentItem.receiptNo)
 
             // The ONE list row (components/ListRow.qml): receipt no over customer·time, total
             // centered against the whole block. `receiptNo` stays a row property so the list's
@@ -235,7 +274,7 @@ Item {
                 Button {
                     Layout.fillWidth: true
                     text: qsTr("Reprint (DUPLICATE)")
-                    onClicked: hvm.reprint(PosEngineBridge.billDetail.receiptNo)
+                    onClicked: root.doReprint(PosEngineBridge.billDetail.receiptNo)
                 }
                 Button {
                     Layout.fillWidth: true

@@ -60,7 +60,9 @@ public:
     Q_INVOKABLE void searchByCustomer(const QString& query);
     // Reprint a bill as a DUPLICATE (engine marks the printed bytes). Does not navigate into
     // detail when invoked from the list — the echoed BillDetail is dropped to stay on the list.
-    Q_INVOKABLE void reprint(const QString& receiptNo);
+    Q_INVOKABLE void reprint(const QString& receiptNo,
+                             const QString& authReason = QString(),
+                             const QString& authorizedBy = QString());
     // Start a return from a recalled bill — the seam to the existing returns flow. A recalled
     // finalized bill is never blind. Emits returnRequested() so the host can flip to "return".
     Q_INVOKABLE void startReturn(const QString& receiptNo);
