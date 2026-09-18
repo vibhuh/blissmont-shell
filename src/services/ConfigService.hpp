@@ -71,6 +71,18 @@ class ConfigService : public QObject {
     // decided it.
     Q_PROPERTY(int paperWidthMm READ paperWidthMm NOTIFY changed)
     Q_PROPERTY(bool autoPrintReceipt READ autoPrintReceipt NOTIFY changed)
+    // Device-local printer extras (contracts v1.27.0): copies (1 or 2; 0 = engine
+    // default 1) and printerDevice (OS path e.g. "/dev/usb/lp0"; empty = engine
+    // default). Both are READ-ONLY from QML — they are configured in the engine
+    // (boot config + SetDeviceConfig) and forwarded here for display only.
+    Q_PROPERTY(int copies READ copies NOTIFY changed)
+    Q_PROPERTY(QString printerDevice READ printerDevice NOTIFY changed)
+    // Server-side config freshness + receipt layout scope (contracts v1.27.0).
+    // fetchedAt: RFC3339 timestamp of the last server sync; empty before first connect.
+    // layoutScope: "terminal"|"store"|"company"|"" (built-in default, no custom row).
+    // Both arrive on configUpdated (the server arm), not deviceConfigUpdated.
+    Q_PROPERTY(QString fetchedAt READ fetchedAt NOTIFY changed)
+    Q_PROPERTY(QString layoutScope READ layoutScope NOTIFY changed)
     // ── Shift management (contracts v1.10.0) ──────────────────────────────────────────────
     // shiftManagementMode ("single"|"multiple"|"scheduled") selects which Begin-Register screen
     // the shell shows and whether the Tasks menu carries Begin/Close-Shift items. The four
@@ -108,6 +120,10 @@ public:
     [[nodiscard]] QString themeMode() const { return themeMode_; }
     [[nodiscard]] int paperWidthMm() const { return paperWidthMm_; }
     [[nodiscard]] bool autoPrintReceipt() const { return autoPrintReceipt_; }
+    [[nodiscard]] int copies() const { return copies_; }
+    [[nodiscard]] QString printerDevice() const { return printerDevice_; }
+    [[nodiscard]] QString fetchedAt() const { return fetchedAt_; }
+    [[nodiscard]] QString layoutScope() const { return layoutScope_; }
     [[nodiscard]] QString shiftManagementMode() const { return shiftManagementMode_; }
     [[nodiscard]] bool requireAuthBeforeStart() const { return requireAuthBeforeStart_; }
     [[nodiscard]] bool requireAuthAfterEnd() const { return requireAuthAfterEnd_; }
@@ -118,12 +134,15 @@ public:
 public slots:
     // Device-local printer settings, from the bridge's deviceConfigUpdated signal.
     // A slot, not a plain method — QML can only call slots and Q_INVOKABLEs.
-    void applyDeviceConfig(int paperWidthMm, bool autoPrintReceipt);
+    // copies and printerDevice added in v1.27.0.
+    void applyDeviceConfig(int paperWidthMm, bool autoPrintReceipt,
+                           int copies = 0, const QString& printerDevice = QString());
     // Hydrate from an engine ConfigUpdated event (relayed by PosEngineBridge, wired
     // in QML). Idempotent: re-applying the same values is a no-op; this is what makes
     // reconnect rehydration cheap (the engine re-pushes config on every (re)connect).
     // paymentMethods is the full device-domain list; this filters to enabled and
     // sorts by sortOrder before exposing it.
+    // fetchedAt and layoutScope added in v1.27.0.
     void applyConfig(bool allowReturns, bool payoutEnabled, bool allowDiscounts,
                      const QString& tenderCompleteMode, const QString& currencySymbol,
                      const QVariantList& paymentMethods,
@@ -140,7 +159,9 @@ public slots:
                      bool requireAuthDifferentShift = false,
                      bool requireAuthReopenCompleted = false,
                      const QVariantList& shiftMasters = QVariantList(),
-                     const QString& reprintRequiresAuth = QStringLiteral("never"));
+                     const QString& reprintRequiresAuth = QStringLiteral("never"),
+                     const QString& fetchedAt = QString(),
+                     const QString& layoutScope = QString());
 
     // Appearance default (SHELL_KEYBOARD_LOOKUP brief, Part 2). Kept OFF the wired
     // ConfigUpdated arm (applyConfig stays arity-matched to the bridge signal — no contract
@@ -173,6 +194,10 @@ private:
     QString themeMode_ = QStringLiteral("light");  // configurable default appearance; POS = light
     int  paperWidthMm_     = 0;      // 0 = renderer default until the engine reports
     bool autoPrintReceipt_ = false;
+    int  copies_           = 0;      // 0 = engine default (1); valid device values are 1 or 2
+    QString printerDevice_;          // OS path e.g. "/dev/usb/lp0"; empty = engine default
+    QString fetchedAt_;              // RFC3339 of last server sync; empty pre-connect
+    QString layoutScope_;            // "terminal"|"store"|"company"|"" (built-in default)
     // Shift management — default "multiple" matches the engine's COALESCE default (today's
     // unrestricted behaviour), so a pre-hydration shell shows the Multiple screen, not a blank one.
     QString shiftManagementMode_ = QStringLiteral("multiple");

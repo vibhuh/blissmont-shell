@@ -53,7 +53,8 @@ void ConfigService::applyConfig(bool allowReturns, bool payoutEnabled, bool allo
                                 const QString& shiftManagementMode, bool requireAuthBeforeStart,
                                 bool requireAuthAfterEnd, bool requireAuthDifferentShift,
                                 bool requireAuthReopenCompleted, const QVariantList& shiftMasters,
-                                const QString& reprintRequiresAuth) {
+                                const QString& reprintRequiresAuth,
+                                const QString& fetchedAt, const QString& layoutScope) {
     const QVariantList methods = enabledSorted(paymentMethods);
     const QString symbol = canonicalSymbol(currencySymbol);
     if (loaded_ && allowReturns_ == allowReturns && payoutEnabled_ == payoutEnabled &&
@@ -69,7 +70,8 @@ void ConfigService::applyConfig(bool allowReturns, bool payoutEnabled, bool allo
         requireAuthAfterEnd_ == requireAuthAfterEnd &&
         requireAuthDifferentShift_ == requireAuthDifferentShift &&
         requireAuthReopenCompleted_ == requireAuthReopenCompleted &&
-        shiftMasters_ == shiftMasters && reprintRequiresAuth_ == reprintRequiresAuth) {
+        shiftMasters_ == shiftMasters && reprintRequiresAuth_ == reprintRequiresAuth &&
+        fetchedAt_ == fetchedAt && layoutScope_ == layoutScope) {
         return;  // unchanged — no spurious notify on every reconnect
     }
     loaded_ = true;
@@ -95,15 +97,21 @@ void ConfigService::applyConfig(bool allowReturns, bool payoutEnabled, bool allo
     requireAuthReopenCompleted_ = requireAuthReopenCompleted;
     shiftMasters_ = shiftMasters;
     reprintRequiresAuth_ = reprintRequiresAuth;
+    fetchedAt_ = fetchedAt;
+    layoutScope_ = layoutScope;
     emit changed();
 }
 
-void ConfigService::applyDeviceConfig(int paperWidthMm, bool autoPrintReceipt) {
-    if (paperWidthMm_ == paperWidthMm && autoPrintReceipt_ == autoPrintReceipt) {
+void ConfigService::applyDeviceConfig(int paperWidthMm, bool autoPrintReceipt,
+                                      int copies, const QString& printerDevice) {
+    if (paperWidthMm_ == paperWidthMm && autoPrintReceipt_ == autoPrintReceipt &&
+        copies_ == copies && printerDevice_ == printerDevice) {
         return;
     }
     paperWidthMm_ = paperWidthMm;
     autoPrintReceipt_ = autoPrintReceipt;
+    copies_ = copies;
+    printerDevice_ = printerDevice;
     emit changed();
 }
 

@@ -214,9 +214,12 @@ void PosEngineBridge::applyEvent(const Event& evt) {
                                cfg.require_auth_before_start(), cfg.require_auth_after_end(),
                                cfg.require_auth_different_shift(), cfg.require_auth_reopen_completed(),
                                shiftMasters,
-                               QString::fromStdString(cfg.reprint_requires_auth()));
+                               QString::fromStdString(cfg.reprint_requires_auth()),
+                               QString::fromStdString(cfg.fetched_at()),
+                               QString::fromStdString(cfg.receipt_layout_scope()));
             // Device-local settings on the same event — see the signal comment.
-            emit deviceConfigUpdated(cfg.paper_width_mm(), cfg.auto_print_receipt());
+            emit deviceConfigUpdated(cfg.paper_width_mm(), cfg.auto_print_receipt(),
+                                     cfg.copies(), QString::fromStdString(cfg.printer_device()));
             break;
         }
         case E::kPayoutRecorded:
@@ -511,12 +514,15 @@ void PosEngineBridge::runEod() {
 // "clear the override and follow the server snapshot", so hasAutoPrintOverride
 // false deliberately sends no value at all.
 void PosEngineBridge::setDeviceConfig(int paperWidthMm, bool hasAutoPrintOverride,
-                                      bool autoPrintOverride) {
+                                      bool autoPrintOverride, int copies) {
     Command cmd;
     auto* sdc = cmd.mutable_set_device_config();
     sdc->set_paper_width_mm(paperWidthMm);
     if (hasAutoPrintOverride) {
         sdc->mutable_auto_print_override()->set_value(autoPrintOverride);
+    }
+    if (copies > 0) {
+        sdc->set_copies(copies);
     }
     writeCommand(std::move(cmd));
 }
