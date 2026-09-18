@@ -100,6 +100,48 @@ Item {
             spacing: Theme.unit
             Text {
                 Layout.fillWidth: true
+                text: qsTr("Copies")
+                color: Theme.textMuted
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.fontBody
+            }
+            ComboBox {
+                model: [1, 2]
+                currentIndex: ConfigService.copies <= 1 ? 0 : 1
+                onActivated: PosEngineBridge.setDeviceConfig(0, false, false, model[currentIndex])
+            }
+        }
+
+        Text {
+            Layout.fillWidth: true
+            text: {
+                var scope = ConfigService.layoutScope;
+                var at = ConfigService.fetchedAt;
+                if (!scope && !at) return qsTr("Layout: not synced");
+                var scopeText = scope === "terminal" ? qsTr("Terminal") :
+                                scope === "store"    ? qsTr("Store")    :
+                                scope === "company"  ? qsTr("Company")  : qsTr("Default");
+                return qsTr("Layout: %1 · synced %2").arg(scopeText).arg(at);
+            }
+            color: Theme.textMuted
+            font.family: Theme.fontFamily
+            font.pixelSize: Theme.fontBody
+        }
+
+        Text {
+            Layout.fillWidth: true
+            visible: ConfigService.printerDevice !== ""
+            text: qsTr("Device: %1").arg(ConfigService.printerDevice)
+            color: Theme.textMuted
+            font.family: Theme.fontFamily
+            font.pixelSize: Theme.fontBody
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: Theme.unit
+            Text {
+                Layout.fillWidth: true
                 text: qsTr("Test print")
                 color: Theme.textMuted
                 font.family: Theme.fontFamily
