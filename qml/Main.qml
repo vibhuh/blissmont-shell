@@ -31,15 +31,17 @@ ApplicationWindow {
                                  allowBlindReturn, refundTenderMode, returnRequiresAuth, restockDefault, allowPartialReturn, heldCartExpiry,
                                  payoutCategories, storeName, registerName,
                                  shiftManagementMode, requireAuthBeforeStart, requireAuthAfterEnd, requireAuthDifferentShift,
-                                 requireAuthReopenCompleted, shiftMasters, reprintRequiresAuth) {
+                                 requireAuthReopenCompleted, shiftMasters, reprintRequiresAuth,
+                                 fetchedAt, layoutScope) {
             ConfigService.applyConfig(allowReturns, payoutEnabled, allowDiscounts, tenderCompleteMode, currencySymbol, paymentMethods,
                                       allowBlindReturn, refundTenderMode, returnRequiresAuth, restockDefault, allowPartialReturn, heldCartExpiry,
                                       payoutCategories, storeName, registerName,
                                       shiftManagementMode, requireAuthBeforeStart, requireAuthAfterEnd, requireAuthDifferentShift,
-                                      requireAuthReopenCompleted, shiftMasters, reprintRequiresAuth)
+                                      requireAuthReopenCompleted, shiftMasters, reprintRequiresAuth,
+                                      fetchedAt, layoutScope)
         }
-	function onDeviceConfigUpdated(paperWidthMm, autoPrintReceipt) {
-            ConfigService.applyDeviceConfig(paperWidthMm, autoPrintReceipt)
+        function onDeviceConfigUpdated(paperWidthMm, autoPrintReceipt, copies, printerDevice) {
+            ConfigService.applyDeviceConfig(paperWidthMm, autoPrintReceipt, copies, printerDevice)
         }
     }
 

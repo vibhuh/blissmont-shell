@@ -110,7 +110,8 @@ public:
                                  const QString& authReason = QString(),
                                  const QString& authorizedBy = QString());
     Q_INVOKABLE void runEod();
-    Q_INVOKABLE void setDeviceConfig(int paperWidthMm, bool hasAutoPrintOverride, bool autoPrintOverride);
+    Q_INVOKABLE void setDeviceConfig(int paperWidthMm, bool hasAutoPrintOverride, bool autoPrintOverride,
+                                     int copies = 0);
     Q_INVOKABLE void printTestPage();
     // Begin-Day (UX §12) — open the day's shift with an opening float. The engine emits
     // ShiftStateChanged(open) on success, or CommandRejected(SHIFT_ALREADY_OPEN) if one is
@@ -215,14 +216,23 @@ signals:
                        // Reprint gate (v1.26.0): "always" | "never". Server policy —
                        // an owner control against reprint malpractice, deliberately
                        // NOT device-local, so the clerk it restricts cannot switch it.
-                       const QString& reprintRequiresAuth);
+                       const QString& reprintRequiresAuth,
+                       // Config freshness + layout scope (v1.27.0).
+                       // fetchedAt: RFC3339 timestamp of when the server last refreshed
+                       //   the config (field 48). Empty until the first sync completes.
+                       // layoutScope: which scope resolved the active receipt layout row:
+                       //   "terminal" | "store" | "company" | "" (built-in default).
+                       const QString& fetchedAt,
+                       const QString& layoutScope);
     // Device-local printer settings, carried on the same ConfigUpdated event but
     // emitted separately: every value on configUpdated above originates on the
     // SERVER and travels server → engine → shell. These two originate on the
     // DEVICE — the engine's own SQLite settings, merged onto the message because
     // one was already going this way. A separate signal keeps that distinction
     // legible rather than hiding two device values among two dozen server ones.
-    void deviceConfigUpdated(int paperWidthMm, bool autoPrintReceipt);
+    // copies and printerDevice added in v1.27.0.
+    void deviceConfigUpdated(int paperWidthMm, bool autoPrintReceipt,
+                             int copies, const QString& printerDevice);
     void authRequired(const QString& action, const QString& reason);
     // A payout was recorded (UX §12): the engine echoes the provisional/local payout id,
     // amount and category after RecordPayout. The shell surfaces this as the payout
